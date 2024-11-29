@@ -1,6 +1,6 @@
-# bobo-gather
+# bobo-fun
 
-Bobo-gather is a project that collects interesting AI open-source projects that run on a Mac (All-In-One).
+bobo-fun is a project that collects interesting AI open-source projects that run on a Mac (All-In-One).
 
 All code has been tested on a MacBook Pro (M4 Max / 128GB RAM).
 
