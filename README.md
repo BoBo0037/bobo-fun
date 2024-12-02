@@ -1,6 +1,6 @@
 # bobo-fun
 
-bobo-fun is a project that collects interesting AI open-source projects that run on a Mac (All-In-One).
+bobo-fun is a project that collects interesting AI open-source projects that **run on a Mac** (All-In-One).
 
 All code has been tested on a MacBook Pro (M4 Max / 128GB RAM).
 
@@ -10,6 +10,12 @@ All code has been tested on a MacBook Pro (M4 Max / 128GB RAM).
 ## Environment
 To set up our environment, please run:
 ```sh
+conda create --name bobo python=3.11
+```
+```sh
+conda activate bobo
+```
+```sh
 conda install pytorch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 -c pytorch
 ```
 ```sh
@@ -18,6 +24,8 @@ pip install -r requirements.txt
 ```sh
 brew install ffmpeg
 ```
+
+If you encounter issues while running CogVideoX, you can try:
 ```sh
 pip install -U git+https://github.com/zRzRzRzRzRzRzR/diffusers.git
 ```
@@ -56,17 +64,26 @@ python run_cogvideo.py
 ```sh
 python run_ltxvideo.py
 ```
+- [suno-ai/bark](https://github.com/suno-ai/bark)
+```sh
+python run_suno_bark.py
+```
 
 ## Notes:
-1. 目前 mac 上 cogvideo 似乎无法生成较长时间视频, 要么视频乱掉, 要么报错 total bytes of NDArray > 2**32 或 Invalid buffer size 问题
-2. 目前 mac 上 LTX-Video 也有 total bytes of NDArray > 2**32 或 Invalid buffer size 问题
+1. 目前 mac 上 cogvideo 和 LTX-Video 似乎无法正常生成较长时间视频, 要么视频乱掉, 要么报错 total bytes of NDArray > 2**32 或 Invalid buffer size 问题
 
 ## TODO:
-- [x] support flux.1 with filipstrand/mflux
+- [x] support flux.1
 - [x] support THUDM/glm-4-9b-chat
 - [x] support microsoft/Phi-3.5-mini-instruct
 - [x] support VectorSpaceLab/OmniGen
 - [x] support THUDM/CogVideo
 - [X] support Lightricks/LTX-Video
+- [ ] support genmoai/mochi
+- [ ] support xinntao/Real-ESRGAN
+- [ ] support GSeanCDAT/GIMM-VFI
 - [ ] support HVision-NKU/StoryDiffusion
-- [ ] support suno-ai/bark
+- [X] support suno-ai/bark
+- [ ] support RVC-Boss/GPT-SoVITS
+- [ ] support facebookresearch/audiocraft
+- [ ] support haoheliu/AudioLDM2

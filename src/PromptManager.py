@@ -66,6 +66,7 @@ class PromptManager:
         prompt = self.prompts.get(key, 'No this prompt')
         if prompt == 'No this prompt':
             logging.warning(f"Prompt with key '{key}' does not exist.")
+            prompt = self.prompts.get("panda")
         return prompt
 
     def show_keys(self):
@@ -75,7 +76,7 @@ class PromptManager:
         else:
             logging.info("Available prompts:")
             for key in keys:
-                logging.info(f"- {key}")
+                logging.info(f"* {key}")
 
     def save(self):
         try:
@@ -87,7 +88,6 @@ class PromptManager:
 
 if __name__ == "__main__":
     prompt_manager = PromptManager("../prompts.json")
-    print(prompt_manager.get("suv"))
-
-    # prompt_manager.add(key = "",
-    #                    value = "")
+    prompt_manager.show_keys()
+    #print(prompt_manager.get("panda"))
+    # prompt_manager.add(key = "", value = "")

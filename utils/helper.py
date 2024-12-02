@@ -13,10 +13,10 @@ def set_device():
         print("Set device to 'mps'")
         device = torch.device('mps')
         os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-        os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
-        os.environ["PYTORCH_MPS_PINNED_MAX_MEMORY_RATIO"] = "0.0"
         os.environ["PYTORCH_MPS_VISUALIZE_ALLOCATIONS"] = "1"
         os.environ["PYTORCH_MPS_TENSOR_CORE_ENABLED"] = "1"
+        #os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
+        #os.environ["PYTORCH_MPS_PINNED_MAX_MEMORY_RATIO"] = "0.0"
         os.environ["ACCELERATE_USE_MPS_DEVICE"] = "1"
     elif torch.cuda.is_available():
         print("Set device to 'cuda'")
@@ -39,7 +39,7 @@ def calc_time_consumption(start_time, end_time) -> None:
         print("Warning: both 'end time' and 'start time' are 0.0. no time calculation can be performed.")
         return
     elapsed_time = (end_time - start_time) / 60.0
-    print(f"Timer: took {elapsed_time:.2f} minutes totally")
+    print(f"Time taken: {elapsed_time:.2f} minutes totally")
 
 def remove_files_except_with_suffix(folder_path : str, suffix : str) -> None:
     for file in os.listdir(folder_path):
