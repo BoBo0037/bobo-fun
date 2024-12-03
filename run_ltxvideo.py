@@ -8,7 +8,10 @@ device = set_device()
 ltx = LTXVideoManager(device, torch.bfloat16)
 
 # set params
-ltx.set_prompt(prompt=PromptManager("prompts.json").get("toy-ship"))
+ltx.set_prompt(
+    prompt=PromptManager("prompts.json").get("toy-ship"),
+    negative_prompt=PromptManager("prompts.json").get("negative-video")
+)
 
 ltx.set_output_layout(
     width= 736, 

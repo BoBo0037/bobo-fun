@@ -15,9 +15,9 @@ def set_device():
         os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
         os.environ["PYTORCH_MPS_VISUALIZE_ALLOCATIONS"] = "1"
         os.environ["PYTORCH_MPS_TENSOR_CORE_ENABLED"] = "1"
-        #os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
-        #os.environ["PYTORCH_MPS_PINNED_MAX_MEMORY_RATIO"] = "0.0"
         os.environ["ACCELERATE_USE_MPS_DEVICE"] = "1"
+        #os.environ["PYTORCH_MPS_PINNED_MAX_MEMORY_RATIO"] = "0.0"
+        #os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0" # 最好不用, 用了也超级慢
     elif torch.cuda.is_available():
         print("Set device to 'cuda'")
         device = torch.device('cuda', 0)
