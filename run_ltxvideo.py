@@ -9,16 +9,16 @@ ltx = LTXVideoManager(device, torch.bfloat16)
 
 # set params
 ltx.set_prompt(
-    prompt=PromptManager("prompts.json").get("toy-ship"),
+    prompt=PromptManager("prompts.json").get("suv"),
     negative_prompt=PromptManager("prompts.json").get("negative-video")
 )
 
 ltx.set_output_layout(
-    width= 736, 
-    height=480, 
-    frame_rate=25, 
-    num_frames=129, 
-    num_inference_steps=40
+    width= 1280, 
+    height=720, 
+    frame_rate=12, 
+    num_frames=57, 
+    num_inference_steps=50
 )
 #ltx.set_input_image("imgs/panda.png")
 

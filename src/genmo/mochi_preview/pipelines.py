@@ -187,6 +187,9 @@ class DitModelFactory(ModelFactory):
 
             model_kwargs.update(cast(dict, lora_kwargs))
 
+        # print("device_id =", device_id)
+        # print("attention_mode =", self.kwargs["attention_mode"])
+
         model_args = dict(
             depth=48,
             patch_size=2,
@@ -210,6 +213,7 @@ class DitModelFactory(ModelFactory):
         )
 
         if fast_init:
+            print("In fast init case")
             model: nn.Module = torch.nn.utils.skip_init(AsymmDiTJoint, **model_args)
         else:
             model: nn.Module = AsymmDiTJoint(**model_args)
@@ -449,6 +453,7 @@ def sample_model(device, dit, conditioning, **args):
     num_latents = latent_t * latent_h * latent_w
     cond_batched = cond_text = cond_null = None
     if "cond" in conditioning:
+        print("In cond in conditioning case")
         cond_text = conditioning["cond"]
         cond_null = conditioning["null"]
         cond_text["packed_indices"] = compute_packed_indices(device, cond_text["y_mask"][0], num_latents)
@@ -458,6 +463,12 @@ def sample_model(device, dit, conditioning, **args):
         cond_batched["packed_indices"] = compute_packed_indices(device, cond_batched["y_mask"][0], num_latents)
         z = repeat(z, "b ... -> (repeat b) ...", repeat=2)
 
+    #print("cond_text =", cond_text)
+    #print("cond_null =", cond_null)
+    #print("z.device =", z.device)
+    #print("cfg_schedule =", cfg_schedule)
+    #print("sigma_schedule =", sigma_schedule)
+
     def model_fn(*, z, sigma, cfg_scale):
         if cond_batched:
             #with torch.autocast("cpu", dtype=torch.bfloat16):
@@ -466,8 +477,10 @@ def sample_model(device, dit, conditioning, **args):
         else:
             nonlocal cond_text, cond_null
             #with torch.autocast("cpu", dtype=torch.bfloat16):
-            out_cond = dit(z, sigma, **cond_text)
-            out_uncond = dit(z, sigma, **cond_null)
+            out_cond = dit(z, sigma, **cond_text)   # BUG in mac
+            out_uncond = dit(z, sigma, **cond_null) # BUG in mac
+            print("current out_cond =", out_cond)
+            #print("current out_uncond =", out_uncond)
         assert out_cond.shape == out_uncond.shape
         out_uncond = out_uncond.to(z)
         out_cond = out_cond.to(z)
@@ -475,8 +488,12 @@ def sample_model(device, dit, conditioning, **args):
 
     # Euler sampler w/ customizable sigma schedule & cfg scale
     for i in get_new_progress_bar(range(0, sample_steps), desc="Sampling"):
+        print(f"Inference step: {i} / {sample_steps}")
         sigma = sigma_schedule[i]
         dsigma = sigma - sigma_schedule[i + 1]
+        #print("current sigma =", sigma)
+        #print("current dsigma =", dsigma)
+        #print("current torch.full() =", torch.full([B] if cond_text else [B * 2], sigma, device=z.device))
 
         # `pred` estimates `z_0 - eps`.
         pred = model_fn(
@@ -554,6 +571,7 @@ class MochiSingleGPUPipeline:
             )
             print_max_memory()
 
+            print("Start get conditioning")
             with move_to_device(self.text_encoder, self.device):
                 conditioning = get_conditioning(
                     tokenizer=self.tokenizer,
@@ -565,15 +583,21 @@ class MochiSingleGPUPipeline:
                 )
             print_max_memory()
 
+            print("Start sampling model")
             with move_to_device(self.dit, self.device):
                 latents = sample_model(self.device, self.dit, conditioning, **kwargs)
             print_max_memory()
+            # print("latents[0] tensor is:")
+            # print(latents[0])
 
+            print("Start decode latents")
             with move_to_device(self.decoder, self.device):
                 if self.decode_type == "tiled_full":
+                    print("In tiled_full case")
                     frames = decode_latents_tiled_full(
                         self.decoder, latents, **self.decode_args)
                 elif self.decode_type == "tiled_spatial":
+                    print("In tiled_spatial case")
                     frames = decode_latents_tiled_spatial(
                         self.decoder, latents, **self.decode_args,
                         num_tiles_w=4, num_tiles_h=2)

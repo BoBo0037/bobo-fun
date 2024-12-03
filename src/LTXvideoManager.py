@@ -48,7 +48,7 @@ class LTXVideoManager():
         self.height : int = 480
         self.frame_rate: int = 25
         self.num_frames : int = 121
-        self.guidance_scale: float = 3.0
+        self.guidance_scale: float = 3.2
         self.num_images_per_prompt : int = 1
         self.num_inference_steps: int = 40
         self.seed : int = None
