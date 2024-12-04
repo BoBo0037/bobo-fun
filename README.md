@@ -61,14 +61,19 @@ python run_ltxvideo.py
 ```sh
 python run_mochi.py
 ```
+- [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
+```sh
+python run_hyvideo.py
+```
 - [suno-ai/bark](https://github.com/suno-ai/bark)
 ```sh
 python run_suno_bark.py
 ```
 
-## Notes:
+## Issues:
 1. CogVideoX(尤其5B) 和 LTX-Video(比 CogVideo 好很多) 都有无法生成较长时间视频的问题。要么视频乱掉, 要么报错 total bytes of NDArray > 2**32 或 Invalid buffer size 问题...
 2. Mochi 目前有 bug, 不知为何 sample_model() ---> model_fn() 里 out_cond 和 out_uncond 模型采样值为 tensor([[[[[nan, nan, nan,  ..., nan, nan, nan]... 导致输出全黑视频
+3. hyvideo 目前跑到 float32 下, 耗费显存巨大...结果也有问题。 bfloat16 跑不起来(有报错...)
 
 ## TODO:
 - [x] support flux.1
@@ -78,6 +83,7 @@ python run_suno_bark.py
 - [x] support THUDM/CogVideo
 - [X] support Lightricks/LTX-Video
 - [X] support genmoai/mochi
+- [X] support Tencent/HunyuanVideo
 - [X] support suno-ai/bark
 - [ ] support GSeanCDAT/GIMM-VFI
 <!-- - [ ] support k4yt3x/video2x -->

@@ -15,5 +15,7 @@ beautifulsoup4==4.12.3
 optimum==1.23.3
 ray==2.39.0
 av==13.1.0
+loguru==0.7.2
+huggingface-hub==0.26.2
 git+https://github.com/zRzRzRzRzRzRzR/diffusers.git # diffusers==0.32.0
 git+https://github.com/suno-ai/bark.git
