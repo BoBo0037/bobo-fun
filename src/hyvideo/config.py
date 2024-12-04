@@ -38,7 +38,7 @@ def add_network_args(parser: argparse.ArgumentParser):
     group.add_argument(
         "--precision",
         type=str,
-        default="fp32",
+        default="bf16",
         choices=PRECISIONS,
         help="Precision mode. Options: fp32, fp16, bf16. Applied to the backbone model and optimizer.",
     )
@@ -66,7 +66,7 @@ def add_extra_models_args(parser: argparse.ArgumentParser):
     group.add_argument(
         "--vae-precision",
         type=str,
-        default="fp32",
+        default="fp16",
         choices=PRECISIONS,
         help="Precision mode for the VAE model.",
     )
@@ -87,7 +87,7 @@ def add_extra_models_args(parser: argparse.ArgumentParser):
     group.add_argument(
         "--text-encoder-precision",
         type=str,
-        default="fp32",
+        default="fp16",
         choices=PRECISIONS,
         help="Precision mode for the text encoder model.",
     )
@@ -144,7 +144,7 @@ def add_extra_models_args(parser: argparse.ArgumentParser):
     group.add_argument(
         "--text-encoder-precision-2",
         type=str,
-        default="fp32",
+        default="fp16",
         choices=PRECISIONS,
         help="Precision mode for the second text encoder model.",
     )

@@ -52,6 +52,8 @@ class PatchEmbed(nn.Module):
         self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
 
     def forward(self, x):
+        if torch.backends.mps.is_available():
+            x = x.to(torch.bfloat16)
         x = self.proj(x)
         if self.flatten:
             x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
@@ -84,6 +86,8 @@ class TextProjection(nn.Module):
         )
 
     def forward(self, caption):
+        if torch.backends.mps.is_available():
+            caption = caption.to(torch.bfloat16)
         hidden_states = self.linear_1(caption)
         hidden_states = self.act_1(hidden_states)
         hidden_states = self.linear_2(hidden_states)

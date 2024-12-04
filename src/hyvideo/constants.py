@@ -64,8 +64,10 @@ NORMALIZATION_TYPE = {"layer", "rms"}
 ACTIVATION_TYPE = {"relu", "silu", "gelu", "gelu_tanh"}
 
 # =================== Model Path =====================
-#MODEL_BASE = os.getenv("MODEL_BASE", "./ckpts")
-MODEL_BASE = os.path.expanduser("~/.cache/huggingface/hub/models--Tencent--HunyuanVideo")
+if torch.backends.mps.is_available():
+    MODEL_BASE = os.path.expanduser("~/.cache/huggingface/hub/models--Tencent--HunyuanVideo")
+else:
+    MODEL_BASE = os.getenv("MODEL_BASE", "./ckpts")
 
 # =================== Data =======================
 DATA_TYPE = {"image", "video", "image_video"}

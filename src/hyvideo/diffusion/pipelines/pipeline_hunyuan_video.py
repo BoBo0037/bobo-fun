@@ -987,8 +987,9 @@ class HunyuanVideoPipeline(DiffusionPipeline):
                     else None
                 )
 
+                # predict the noise residual
                 with torch.autocast(
-                    device_type="cpu", dtype=target_dtype, enabled=autocast_enabled
+                    device_type="cuda", dtype=target_dtype, enabled=autocast_enabled
                 ):
                     noise_pred = self.transformer(  # For an input image (129, 192, 336) (1, 256, 256)
                         latent_model_input,  # [2, 16, 33, 24, 42]
@@ -1071,7 +1072,7 @@ class HunyuanVideoPipeline(DiffusionPipeline):
                 latents = latents / self.vae.config.scaling_factor
 
             with torch.autocast(
-                device_type="cpu", dtype=vae_dtype, enabled=vae_autocast_enabled
+                device_type="cuda", dtype=vae_dtype, enabled=vae_autocast_enabled
             ):
                 if enable_tiling:
                     self.vae.enable_tiling()

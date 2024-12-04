@@ -9,33 +9,37 @@ from datetime import datetime
 from src.hyvideo.utils.file_utils import save_videos_grid
 from src.hyvideo.config import parse_args
 from src.hyvideo.inference import HunyuanVideoSampler
-
+from src.hyvideo.config import MODEL_BASE
 from src.PromptManager import PromptManager
 
-# Resolution	         h/w=9:16	    h/w=16:9    	    h/w=4:3	        h/w=3:4	        h/w=1:1
-#   540p	        544px960px129f	 960px544px129f	    624px832px129f	832px624px129f	720px720px129f
-#  720p(recommend)	720px1280px129f	 1280px720px129f	1104px832px129f	832px1104px129f	960px960px129f
+# Resolution	       h/w=9:16	         h/w=16:9    	    h/w=4:3	        h/w=3:4	         h/w=1:1
+#  540p	            544px960px129f	  960px544px129f    624px832px129f	 832px624px129f	  720px720px129f
+#  720p(recommend)	720px1280px129f	  1280px720px129f	1104px832px129f	 832px1104px129f  960px960px129f
 
 def main():
     # set args
     args = parse_args()
-    video_fps = 8
-    local_dir = os.path.expanduser("~/.cache/huggingface/hub/models--Tencent--HunyuanVideo")
-    args.model_base = local_dir
-    args.dit_weight = local_dir + "/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt"
+    args.model_base = MODEL_BASE
+    args.dit_weight = MODEL_BASE + "/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt"
     args.save_path = "hyvideo-output"
     args.prompt = PromptManager("prompts.json").get("suv")
     args.neg_prompt = PromptManager("prompts.json").get("negative-video")
     args.video_size=(624, 832)
     args.model_resolution = "540p"
+    args.video_fps = 8
     args.video_length = 17
     args.infer_steps = 50
     args.disable_autocast=False
     args.seed = int.from_bytes(os.urandom(2), "big")
+    # precisions
+    args.precision="bf16"
+    args.text_encoder_precision="bf16"
+    args.text_encoder_precision_2="bf16"
+    args.vae_precision="bf16"
     print(f"Set args to: '{args}'")
 
     # check model weights
-    #check_model(local_dir)
+    check_model(MODEL_BASE)
 
     # model root path
     models_root_path = Path(args.model_base)
@@ -76,11 +80,11 @@ def main():
         sample = samples[i].unsqueeze(0)
         time_flag = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d-%H:%M:%S")
         save_path = f"{save_path}/{time_flag}_seed{outputs['seeds'][i]}_{outputs['prompts'][i][:100].replace('/','')}.mp4"
-        save_videos_grid(sample, save_path, fps=video_fps)
+        save_videos_grid(sample, save_path, fps=args.video_fps)
         logger.info(f'Sample save to: {save_path}')
 
 
-def check_model(local_dir : str) -> None: 
+def check_model(model_dir : str) -> None: 
     # HunyuanVideo
     #   ├──ckpts
     #   │  ├──README.md
@@ -91,13 +95,13 @@ def check_model(local_dir : str) -> None:
     #   │  ├──text_encoder_2
     #   ├──...
 
-    # download unyuanVideo ckpt
+    # download hunyuanVideo ckpt
     command_download_tencent_HunyuanVideo = [
         "huggingface-cli",
         "download",
         "tencent/HunyuanVideo",
         "--local-dir",
-        local_dir
+        model_dir
     ]
     subprocess.run(command_download_tencent_HunyuanVideo, env=os.environ)
 
@@ -107,7 +111,7 @@ def check_model(local_dir : str) -> None:
         "download",
         "xtuner/llava-llama-3-8b-v1_1-transformers",
         "--local-dir",
-        local_dir + "/llava-llama-3-8b-v1_1-transformers"
+        model_dir + "/llava-llama-3-8b-v1_1-transformers"
     ]
     subprocess.run(command_download_llava_llama_3_8b_v1_1_transformers, env=os.environ)
 
@@ -117,7 +121,7 @@ def check_model(local_dir : str) -> None:
         "download",
         "openai/clip-vit-large-patch14",
         "--local-dir",
-        local_dir + "/text_encoder_2"
+        model_dir + "/text_encoder_2"
     ]
     subprocess.run(command_download_clip_vit_large_patch14, env=os.environ)
 
@@ -126,9 +130,9 @@ def check_model(local_dir : str) -> None:
         "python",
         "src/hyvideo/utils/preprocess_text_encoder_tokenizer_utils.py",
         "--input_dir", 
-        local_dir + "/llava-llama-3-8b-v1_1-transformers",
+        model_dir + "/llava-llama-3-8b-v1_1-transformers",
         "--output_dir",
-        local_dir + "/text_encoder"
+        model_dir + "/text_encoder"
     ]
     subprocess.run(command_separate_language_model_parts, env=os.environ)
 
