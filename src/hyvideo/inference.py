@@ -275,6 +275,26 @@ class HunyuanVideoSampler(Inference):
             device=device,
             logger=logger,
         )
+        # ====================================================================================
+        # add code
+        # ====================================================================================
+        count_vae_sum = 0
+        count_text_encoder_mean = 0
+        count_text_encoder_2_sum = 0
+        count_model_sum = 0
+
+        for k, v in self.vae.named_parameters():
+            count_vae_sum += v.sum()
+        for k, v in self.text_encoder.named_parameters():
+            count_text_encoder_mean += v.mean()
+        for k, v in self.text_encoder_2.named_parameters():
+            count_text_encoder_2_sum += v.sum()
+        for k, v in self.model.named_parameters():
+            count_model_sum += v.sum()
+        print(f"vae params sum: {count_vae_sum}")
+        print(f"text_encoder params mean: {count_text_encoder_mean}")
+        print(f"text_encoder_2 params sum: {count_text_encoder_2_sum}")
+        print(f"model params sum: {count_model_sum}")
 
         self.pipeline = self.load_diffusion_pipeline(
             args=args,

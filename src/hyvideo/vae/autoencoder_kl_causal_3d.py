@@ -309,6 +309,8 @@ class AutoencoderKLCausal3D(ModelMixin, ConfigMixin, FromOriginalVAEMixin):
         if self.use_spatial_tiling and (z.shape[-1] > self.tile_latent_min_size or z.shape[-2] > self.tile_latent_min_size):
             return self.spatial_tiled_decode(z, return_dict=return_dict)
 
+        if torch.backends.mps.is_available():
+            z = z.to(torch.bfloat16)
         z = self.post_quant_conv(z)
         dec = self.decoder(z)
 
