@@ -25,11 +25,10 @@ def main():
     args.prompt = PromptManager("prompts.json").get("suv")
     args.neg_prompt = PromptManager("prompts.json").get("negative-video")
     args.video_size=(624, 832)
-    args.model_resolution = "540p"
     args.video_fps = 8
     args.video_length = 17
     args.infer_steps = 50
-    args.disable_autocast=False
+    args.disable_autocast=True
     args.seed = int.from_bytes(os.urandom(2), "big")
     # precisions
     args.precision="bf16"

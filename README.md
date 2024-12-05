@@ -59,11 +59,11 @@ python run_ltxvideo.py
 ```
 - [mochi](https://github.com/genmoai/mochi)
 ```sh
-python run_mochi.py
+python run_mochi.py    (black video bug)
 ```
 - [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
 ```sh
-python run_hyvideo.py
+python run_hyvideo.py  (black video bug)
 ```
 - [suno-ai/bark](https://github.com/suno-ai/bark)
 ```sh
@@ -71,10 +71,10 @@ python run_suno_bark.py
 ```
 
 ## Issues:
-1. hyvideo 已支持 mac 下 bfloat16 运行, 但视频生成结果有问题??? 有时间再看看...
-2. CogVideoX(建议玩玩 ogVideoX-2b)。5B基本无法生成视频, 要么视频乱掉, 要么报错 total bytes of NDArray > 2**32 或 Invalid buffer size 问题...
-3. LTX-Video(目前最适合在 mac 上玩), 能生成较长视频, 整体效果也还不错。 但极限长度情况下仍然有 2 中提到的报错问题...
-4. Mochi(mac 上不推荐) 的 sample_model() ---> model_fn() ---> out_cond 和 out_uncond 模型采样值为 tensor([[nan, nan, nan,  ..., nan, nan, nan]...]), 导致输出全黑视频...
+1. CogVideoX(建议玩玩 CogVideoX-2b)。5B基本无法生成视频, 要么视频乱掉, 要么报错 total bytes of NDArray > 2**32 或 Invalid buffer size 问题...
+2. LTX-Video(目前最适合在 mac 上玩), 能生成较长视频, 整体效果也还不错。 但极限长度情况下仍然有 2 中提到的报错问题...
+3. Mochi(mac 上不推荐) 的 sample_model() ---> model_fn() ---> out_cond 和 out_uncond 模型采样值为 tensor([[nan, nan, nan,  ..., nan, nan, nan]...]), 导致输出全黑视频...
+4. hyvideo 支持 mac 下 bfloat16 运行, 但视频生成结果是纯黑色...不知和 Mochi 是不是类似情况
 
 ## TODO:
 - [x] support flux.1

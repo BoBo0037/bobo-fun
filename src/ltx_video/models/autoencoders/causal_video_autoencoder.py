@@ -35,7 +35,7 @@ class CausalVideoAutoencoder(AutoencoderKLWrapper):
         video_vae.to(kwargs["torch_dtype"])
 
         model_local_path = pretrained_model_name_or_path / "autoencoder.pth"
-        ckpt_state_dict = torch.load(model_local_path, map_location=torch.device("cpu"))
+        ckpt_state_dict = torch.load(model_local_path, map_location=torch.device("cpu"), weights_only=True)
         video_vae.load_state_dict(ckpt_state_dict)
 
         statistics_local_path = (
