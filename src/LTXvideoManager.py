@@ -69,7 +69,7 @@ class LTXVideoManager():
         self.output_dir = (
             Path(self.output_path)
             if self.output_path
-            else Path(f"outputs/{datetime.today().strftime('%Y-%m-%d')}")
+            else Path(f"output_ltx_video/{datetime.today().strftime('%Y-%m-%d')}")
         )
         self.output_dir.mkdir(parents=True, exist_ok=True)
         print(f"Output direction: {self.output_dir}")

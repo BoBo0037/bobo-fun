@@ -47,23 +47,25 @@ python run_phi.py
 ```sh
 python run_omnigen.py
 ```
-
 - [CogVideo](https://github.com/THUDM/CogVideo)
 ```sh
 python run_cogvideo.py
 ```
-
+- [CogVideoX-Fun](https://github.com/aigc-apps/CogVideoX-Fun)
+```sh
+PYTORCH_ENABLE_MPS_FALLBACK=1 python run_cogvideofun.py
+```
 - [LTX-Video](https://github.com/Lightricks/LTX-Video)
 ```sh
 python run_ltxvideo.py
 ```
-- [mochi](https://github.com/genmoai/mochi)
+- [mochi](https://github.com/genmoai/mochi) ---------> **PS. black video bug**
 ```sh
-python run_mochi.py    (black video bug)
+python run_mochi.py
 ```
-- [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
+- [HunyuanVideo](https://github.com/Tencent/HunyuanVideo) ---------> **PS. black video bug**
 ```sh
-python run_hyvideo.py  (black video bug)
+python run_hyvideo.py
 ```
 - [suno-ai/bark](https://github.com/suno-ai/bark)
 ```sh
@@ -71,11 +73,17 @@ python run_suno_bark.py
 ```
 
 ## Issues:
-1. CogVideoX(建议玩玩 CogVideoX-2b)。5B基本无法生成视频, 要么视频乱掉, 要么报错 total bytes of NDArray > 2**32 或 Invalid buffer size 问题...
-2. LTX-Video(目前最适合在 mac 上玩), 能生成较长视频, 整体效果也还不错。 但极限长度情况下仍然有 2 中提到的报错问题...
-3. Mochi(mac 上不推荐) 的 sample_model() ---> model_fn() ---> out_cond 和 out_uncond 模型采样值为 tensor([[nan, nan,  ..., nan, nan]...]), 导致输出全黑视频...
-4. hyvideo 支持 mac 下 bfloat16 运行, 但视频生成结果是纯黑色...不知和 Mochi 是不是类似情况
-   Bug 更新: spatial_tiled_decode() -> decoded = self.decoder(tile) -> sample = self.conv_in(sample) 这里输入 sample 后得出全 nan 的 sample ...
+1. 目前几乎所有文生视频项目, 当分辨率或生成帧数较大时, 都有 total bytes of NDArray > 2**32 或 Invalid buffer size 报错问题。这似乎是 mac 本身内部实现问题, 暂无太好方法。
+
+2. CogVideoX 系列整体效果比较好。 但目前 mac 上只建议 2b 模型, 5b 版有上述 1 中问题。CogVideoX-Fun 版类似, 整体更灵活, 动作幅度更大, 两者生成质量其实总体差不多, 各有优缺点。
+
+2. LTX-Video-2b 整体效果稍弱于 CogVideoX-2b。但它有生成速度快, 生成视频时间长, 支持多种模式等优点, 是目前最适合在 mac 上玩但文生视频模型, 非常期待后续更新。
+
+3. Mochi 和 hyvideo(效果应该是当下开源中最好) 目前均有纯黑视频 bug, 暂时没找到好方法解决。
+
+   Mochi: sample_model() ---> model_fn() ---> out_cond 和 out_uncond 模型采样值为 tensor([[nan, nan, ..., nan, nan]...]), 导致纯黑问题。
+
+   hyvideo: spatial_tiled_decode() -> decoded = self.decoder(tile) -> sample = self.conv_in(sample) 这里输入 sample 后得出全 nan 的 值, 导致纯黑问题。
 
 
 ## TODO:
@@ -84,6 +92,7 @@ python run_suno_bark.py
 - [x] support microsoft/Phi-3.5-mini-instruct
 - [x] support VectorSpaceLab/OmniGen
 - [x] support THUDM/CogVideo
+- [x] support aigc-apps/CogVideoX-Fun
 - [X] support Lightricks/LTX-Video
 - [X] support genmoai/mochi
 - [X] support Tencent/HunyuanVideo

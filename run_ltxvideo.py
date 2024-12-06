@@ -14,10 +14,10 @@ ltx.set_prompt(
 )
 
 ltx.set_output_layout(
-    width= 1280, 
-    height=720, 
-    frame_rate=12, 
-    num_frames=57, 
+    width= 768, 
+    height=432, 
+    frame_rate=8, 
+    num_frames=24, 
     num_inference_steps=50
 )
 #ltx.set_input_image("imgs/panda.png")

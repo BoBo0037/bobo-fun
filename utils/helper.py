@@ -55,6 +55,10 @@ def remove_all_files(folder_path : str) -> None:
         if os.path.isfile(file_path):
             os.remove(file_path)
 
+def check_and_make_folder(output_path : str) -> None:
+    if not os.path.exists(output_path):
+        os.makedirs(output_path, exist_ok=True)
+
 def check_and_init_folder(folder_path : str) -> None:
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)

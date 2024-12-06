@@ -21,7 +21,7 @@ def main():
     args = parse_args()
     args.model_base = MODEL_BASE
     args.dit_weight = MODEL_BASE + "/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt"
-    args.save_path = "hyvideo-output"
+    args.save_path = "output_hyvideo"
     args.prompt = PromptManager("prompts.json").get("suv")
     args.neg_prompt = PromptManager("prompts.json").get("negative-video")
     args.video_size=(624, 832)

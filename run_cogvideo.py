@@ -8,21 +8,20 @@ device = set_device()
 cogVideo = CogVideoManager(device, torch.bfloat16)
 
 # set params
-cogVideo.set_prompt(prompt=PromptManager("prompts.json").get("toy-ship"))
+cogVideo.set_prompt(prompt=PromptManager("prompts.json").get("suv"))
 
 cogVideo.set_model(
-    model_path="THUDM/CogVideoX-2b", # "THUDM/CogVideoX-2b", "THUDM/CogVideoX1.5-5B", "THUDM/CogVideoX1.5-5B-I2V" 
+    model_path="THUDM/CogVideoX-2b", 
     generate_type="t2v"              # Literal["t2v", "i2v", "v2v"]
 )
 
-# only can generate 2 seconds on mac ???
 cogVideo.set_output_layout(
-    output_path="./output.mp4", 
-    width= 736, 
-    height=480,
+    output_path="output_cogvideox", 
+    width= 768, 
+    height=432,
     fps=8,
-    num_frames=17,
-    num_inference_steps=30
+    num_frames=24,
+    num_inference_steps=50
 )
 
 #cogVideo.set_input_image_or_video("imgs/panda.png")

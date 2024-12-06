@@ -10,7 +10,7 @@ use_controlnet = False
 flux_manager = FluxManager()
 flux_manager.set_model(model="schnell", quantize=8)
 flux_manager.set_prompt(prompt=prompt)
-flux_manager.set_output_layout(output="outputs/gen_img.png", width=720, height=480)
+flux_manager.set_output_layout(output="output_flux/img.png", width=720, height=480)
 
 if use_lora:
     flux_manager.set_loras(

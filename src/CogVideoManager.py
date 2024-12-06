@@ -10,6 +10,7 @@ from diffusers import (
     CogVideoXVideoToVideoPipeline,
 )
 from diffusers.utils import export_to_video, load_image, load_video
+from utils.helper import check_and_make_folder
 
 class CogVideoManager():
     def __init__(self, device : torch.device, dtype : torch.dtype):
@@ -18,14 +19,14 @@ class CogVideoManager():
         self.prompt: str = "The camera follows behind a white vintage SUV with a black roof rack as it speeds up a steep dirt road surrounded by pine trees on a steep mountain slope, dust kicks up from it’s tires, the sunlight shines on the SUV as it speeds along the dirt road, casting a warm glow over the scene. The dirt road curves gently into the distance, with no other cars or vehicles in sight. The trees on either side of the road are redwoods, with patches of greenery scattered throughout. The car is seen from the rear following the curve with ease, making it seem as if it is on a rugged drive through the rugged terrain. The dirt road itself is surrounded by steep hills and mountains, with a clear blue sky above with wispy clouds."
         self.model_path: str = "THUDM/CogVideoX-2b"
         self.generate_type: str = "t2v"
-        self.output_path: str = "./output.mp4"
-        self.width: int = 720
-        self.height: int = 480
+        self.output_path: str = "output_cogvideox"
+        self.width: int = 768
+        self.height: int = 432
         self.fps: int = 8
-        self.num_frames: int = 41
-        self.guidance_scale: float = 6.0
+        self.num_frames: int = 24
+        self.guidance_scale: float = 6.5
         self.image_or_video_path: str = None
-        self.num_inference_steps: int = 30
+        self.num_inference_steps: int = 50
         self.num_videos_per_prompt: int = 1
         self.lora_path: str = None
         self.lora_rank: int = 128
@@ -42,13 +43,21 @@ class CogVideoManager():
             self.seed = int.from_bytes(os.urandom(2), "big")
         print(f"Using seed: {self.seed}")
 
+        # check output path
+        check_and_make_folder(self.output_path)
+
+        # get prefix
+        index = len([path for path in os.listdir(self.output_path)]) + 1
+        prefix = str(index).zfill(8)
+        video_output_path = os.path.join(self.output_path, prefix + ".mp4")
+
         print("start generate video")
         generate_video(
             prompt=self.prompt,
             model_path=self.model_path,
             lora_path=self.lora_path,
             lora_rank=self.lora_rank,
-            output_path=self.output_path,
+            output_path=video_output_path,
             num_frames=self.num_frames,
             width=self.width,
             height=self.height,
@@ -216,4 +225,5 @@ def generate_video(
             guidance_scale=guidance_scale,
             generator=torch.Generator().manual_seed(seed),  # Set the seed for reproducibility
         ).frames[0]
+    
     export_to_video(video_generate, output_path, fps=fps)
