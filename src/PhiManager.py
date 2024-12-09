@@ -45,12 +45,12 @@ class PhiManager():
         )
 
     @torch.inference_mode()
-    def infer(self, query : Any) -> str:
-        print("Start inference")        
+    def infer(self, query : Any, use_streamer : bool) -> str:
+        print("Start inference")
         generated_text = self.pipe(
             text_inputs = query,
-            streamer=self.streamer, 
-            max_new_tokens = 512,
+            streamer=self.streamer if use_streamer else None, 
+            max_new_tokens = 256,
             temperature = 0.3,
             do_sample = True,
             return_full_text = False

@@ -39,7 +39,7 @@ class VideoCutManager:
         logging.info(f"fps of video B = {fps_B}")
         # handle resolution
         if width_A != width_B or height_A != height_B:
-            logging.warning(f"The input video clips have different sresolution. We force resize video B resolution to the video A resolution. width:{width_A}, height:{height_A} ")
+            logging.warning(f"The input video clips have different sresolution. We force resize video B resolution to the video A resolution as width:{width_A}, height:{height_A} ")
             clip_B = clip_B.resize((width_A, height_A))
         # handle fps
         if fps_A > fps_B:

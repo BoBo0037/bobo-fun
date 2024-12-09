@@ -15,7 +15,7 @@ query = [
     {"role": "system", "content": "你是一个只说中文的AI小助手"},
     {"role": "user", "content": "光速是多少？"}
 ]
-print(glm.infer(query))
+print(glm.infer(query, True))
 
 # release
 glm.cleanup()

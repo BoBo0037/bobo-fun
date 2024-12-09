@@ -15,7 +15,7 @@ query = [
     {"role": "system", "content": "你是一个只说中文的AI小助手"},
     {"role": "user", "content": "光速是多少？"}
 ]
-print(phi.infer(query), flush=True)
+print(phi.infer(query, True))
 
 # release
 phi.cleanup()

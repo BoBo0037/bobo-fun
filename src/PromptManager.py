@@ -1,6 +1,9 @@
 import os
 import json
 import logging
+import torch
+from utils.helper import set_device
+from src.GlmManager import GlmManager
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -9,6 +12,7 @@ class PromptManager:
         self.file_path = file_path
         self.create_json_file_if_not_exists()
         self.prompts = self.load()
+        self.rewriter = self.Rewriter()
 
     def create_json_file_if_not_exists(self):
         if not os.path.exists(self.file_path):
@@ -85,6 +89,40 @@ class PromptManager:
             logging.info(f"Prompts have been saved to {self.file_path}.")
         except IOError as e:
             logging.error(f"Failed to save prompts: {e}")
+
+    class Rewriter:
+        def __init__(self):
+            self.video_rewrite_prompt = """
+            Video Recaption Task:
+            You are a large language model specialized in rewriting video descriptions. Your task is to modify the input description.
+            0. Preserve ALL information, including style words and technical terms.
+            1. If the input is in Chinese, translate the entire description to English. 
+            2. If the input is just one or two words describing an object or person, provide a brief, simple description focusing on basic visual characteristics. Limit the description to 1-2 short sentences.
+            3. If the input does not include style, lighting, atmosphere, you can make reasonable associations.
+            4. Output ALL must be in English.
+            Given Input:
+            input: "{input}"
+            """
+
+        def get_rewrite_prompt(self, ori_prompt) -> str:
+            return self.video_rewrite_prompt.format(input=ori_prompt)
+
+        def rewrite_video_prompt(self, input_prompt : str):
+            # set device
+            device = set_device()
+            dtype = torch.bfloat16
+            rewrite_prompt = self.get_rewrite_prompt(input_prompt)
+            # init & setup model
+            glm = GlmManager(device, dtype, "THUDM/glm-4-9b-chat")
+            glm.setup()
+            # infer
+            output_rewrited_prompt = glm.infer(rewrite_prompt, False)
+            #print(f"original input prompt = {input_prompt}")
+            #print(f"rewrited video prompt = {output_rewrited_prompt}")
+            # release
+            glm.cleanup()
+            return output_rewrited_prompt[0]['generated_text']
+
 
 if __name__ == "__main__":
     prompt_manager = PromptManager("../prompts.json")
