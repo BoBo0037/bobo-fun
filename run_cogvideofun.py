@@ -9,6 +9,9 @@ device = set_device()
 cogVideoFun = CogVideoFunManager(device, torch.bfloat16)
 
 # settings
+# can make a video with on Mac: 
+# fps=8, num_frames = 24, around 3 seconds video
+# fps=6, num_frames = 24, around 4 seconds video
 cogVideoFun.set_prompt(prompt=PromptManager("prompts.json").get("suv"))
 cogVideoFun.set_validation_images(validation_image_start="imgs/suv.png")
 cogVideoFun.set_output_layout(

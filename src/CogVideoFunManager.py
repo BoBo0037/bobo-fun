@@ -29,7 +29,6 @@ class CogVideoFunManager():
         self.output_path = "output_cogvideox_fun"
         self.prompt = "The camera follows behind a white vintage SUV with a black roof rack as it speeds up a steep dirt road surrounded by pine trees on a steep mountain slope, dust kicks up from it's tires, the sunlight shines on the SUV as it speeds along the dirt road, casting a warm glow over the scene. The dirt road curves gently into the distance, with no other cars or vehicles in sight. The trees on either side of the road are redwoods, with patches of greenery scattered throughout. The car is seen from the rear following the curve with ease, making it seem as if it is on a rugged drive through the rugged terrain. The dirt road itself is surrounded by steep hills and mountains, with a clear blue sky above with wispy clouds."
         self.negative_prompt = "The video is not of a high quality, it has a low resolution. Watermark present in each frame. The background is solid. Strange body and strange trajectory. Distortion."
-        self.sampler_name = "DDIM_Origin"
         self.scheduler_dict = {
             "Euler": EulerDiscreteScheduler,
             "Euler A": EulerAncestralDiscreteScheduler,
@@ -38,6 +37,7 @@ class CogVideoFunManager():
             "DDIM_Cog": CogVideoXDDIMScheduler,
             "DDIM_Origin": DDIMScheduler
         }
+        self.sampler_name = "DPM++"
         self.video_size = [432, 768]
         self.num_frames = 72
         self.fps = 8

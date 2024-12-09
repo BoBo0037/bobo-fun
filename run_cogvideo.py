@@ -15,6 +15,9 @@ cogVideo.set_model(
     generate_type="t2v"              # Literal["t2v", "i2v", "v2v"]
 )
 
+# can make a video with on Mac: 
+# fps=8, num_frames = 24, around 3 seconds video
+# fps=6, num_frames = 24, around 4 seconds video
 cogVideo.set_output_layout(
     output_path="output_cogvideox", 
     width= 768, 
