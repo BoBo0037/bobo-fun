@@ -20,6 +20,14 @@ ltx.set_output_layout(
     num_frames=24, 
     num_inference_steps=50
 )
+
+ltx.set_stg(
+    stg_mode="stg-a",   # Choose between 'stg-a' or 'stg-r'
+    stg_scale=1.0,      # Recommended values are ≤2.0, (stg_scale = 0.0 means do not using stg)
+    stg_block_idx=[20],   # Specify the block index for applying STG
+    do_rescaling=True  # Set to True to enable rescaling
+)
+
 #ltx.set_input_image("imgs/panda.png")
 
 # setup

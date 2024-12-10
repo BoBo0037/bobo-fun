@@ -27,6 +27,7 @@ from transformers import T5EncoderModel, T5Tokenizer
 
 from ..models.transformers.transformer3d import Transformer3DModel
 from ..models.transformers.symmetric_patchifier import Patchifier
+from ..models.transformers.attention import Attention, AttnProcessor2_0
 from ..models.autoencoders.vae_encode import (
     get_vae_size_scale_factor,
     vae_decode,
@@ -165,6 +166,323 @@ def retrieve_timesteps(
         timesteps = scheduler.timesteps
     return timesteps, num_inference_steps
 
+class STGResidualProcessor:
+    r"""
+    Processor for implementing scaled dot-product attention (enabled by default if you're using PyTorch 2.0).
+    """
+
+    def __init__(self):
+        pass
+
+    def __call__(
+        self,
+        attn: Attention,
+        hidden_states: torch.FloatTensor,
+        freqs_cis: Tuple[torch.FloatTensor, torch.FloatTensor],
+        encoder_hidden_states: Optional[torch.FloatTensor] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        temb: Optional[torch.FloatTensor] = None,
+        *args,
+        **kwargs,
+    ) -> torch.FloatTensor:
+        if len(args) > 0 or kwargs.get("scale", None) is not None:
+            deprecation_message = "The `scale` argument is deprecated and will be ignored. Please remove it, as passing it will raise an error in the future. `scale` should directly be passed while calling the underlying pipeline component i.e., via `cross_attention_kwargs`."
+            deprecate("scale", "1.0.0", deprecation_message)
+
+        residual = hidden_states
+        if attn.spatial_norm is not None:
+            hidden_states = attn.spatial_norm(hidden_states, temb)
+
+        input_ndim = hidden_states.ndim
+
+        if input_ndim == 4:
+            batch_size, channel, height, width = hidden_states.shape
+            hidden_states = hidden_states.view(
+                batch_size, channel, height * width
+            ).transpose(1, 2)
+
+        hidden_states_uncond, hidden_states_cond, hidden_states_ptb = hidden_states.chunk(3)
+        hidden_states = torch.cat([hidden_states_uncond, hidden_states_cond])
+
+        freqs_cis_1, freqs_cis_2 = freqs_cis
+        freqs_cis_1_uncond, freqs_cis_1_cond, freqs_cis_1_perturb = freqs_cis_1.chunk(3)
+        freqs_cis_2_uncond, freqs_cis_2_cond, freqs_cis_2_perturb = freqs_cis_2.chunk(3)
+
+        freqs_cis_1 = torch.cat([freqs_cis_1_uncond, freqs_cis_1_cond])
+        freqs_cis_2 = torch.cat([freqs_cis_2_uncond, freqs_cis_2_cond])
+
+        freqs_cis = (freqs_cis_1, freqs_cis_2)
+
+        batch_size, sequence_length, _ = (
+            hidden_states.shape
+            if encoder_hidden_states is None
+            else encoder_hidden_states.shape
+        )
+
+        if (attention_mask is not None) and (not attn.use_tpu_flash_attention):
+            attention_mask = attn.prepare_attention_mask(
+                attention_mask, sequence_length, batch_size
+            )
+            # scaled_dot_product_attention expects attention_mask shape to be
+            # (batch, heads, source_length, target_length)
+            attention_mask = attention_mask.view(
+                batch_size, attn.heads, -1, attention_mask.shape[-1]
+            )
+
+        if attn.group_norm is not None:
+            hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(
+                1, 2
+            )
+
+        query = attn.to_q(hidden_states)
+        query = attn.q_norm(query)
+
+        if encoder_hidden_states is not None:
+            if attn.norm_cross:
+                encoder_hidden_states = attn.norm_encoder_hidden_states(
+                    encoder_hidden_states
+                )
+            key = attn.to_k(encoder_hidden_states)
+            key = attn.k_norm(key)
+        else:  # if no context provided do self-attention
+            encoder_hidden_states = hidden_states
+            key = attn.to_k(hidden_states)
+            key = attn.k_norm(key)
+            if attn.use_rope:
+                key = attn.apply_rotary_emb(key, freqs_cis)
+                query = attn.apply_rotary_emb(query, freqs_cis)
+
+        value = attn.to_v(encoder_hidden_states)
+
+        inner_dim = key.shape[-1]
+        head_dim = inner_dim // attn.heads
+
+        query = query.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+        key = key.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+        value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+
+        # the output of sdp = (batch, num_heads, seq_len, head_dim)
+
+        if attn.use_tpu_flash_attention:  # use tpu attention offload 'flash attention'
+            assert False, "Flash Attention not supported in STG"
+        else:
+            hidden_states = F.scaled_dot_product_attention(
+                query,
+                key,
+                value,
+                attn_mask=attention_mask,
+                dropout_p=0.0,
+                is_causal=False,
+            )
+
+        hidden_states = hidden_states.transpose(1, 2).reshape(
+            batch_size, -1, attn.heads * head_dim
+        )
+        hidden_states = hidden_states.to(query.dtype)
+
+        # linear proj
+        hidden_states = attn.to_out[0](hidden_states)
+        # dropout
+        hidden_states = attn.to_out[1](hidden_states)
+
+        if input_ndim == 4:
+            hidden_states = hidden_states.transpose(-1, -2).reshape(
+                batch_size, channel, height, width
+            )
+
+        hidden_states = torch.cat([hidden_states, hidden_states_ptb])
+        freqs_cis_1 = torch.cat([freqs_cis_1_uncond, freqs_cis_1_cond, freqs_cis_1_perturb])
+        freqs_cis_2 = torch.cat([freqs_cis_2_uncond, freqs_cis_2_cond, freqs_cis_2_perturb])
+
+        freqs_cis = (freqs_cis_1, freqs_cis_2)
+
+        if attn.residual_connection:
+            hidden_states = hidden_states + residual
+
+        hidden_states = hidden_states / attn.rescale_output_factor
+
+        return hidden_states
+
+class STGAttentionProcessor:
+    r"""
+    Processor for implementing scaled dot-product attention (enabled by default if you're using PyTorch 2.0).
+    """
+
+    def __init__(self):
+        pass
+
+    def __call__(
+        self,
+        attn: Attention,
+        hidden_states: torch.FloatTensor,
+        freqs_cis: Tuple[torch.FloatTensor, torch.FloatTensor],
+        encoder_hidden_states: Optional[torch.FloatTensor] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        temb: Optional[torch.FloatTensor] = None,
+        *args,
+        **kwargs,
+    ) -> torch.FloatTensor:
+        if len(args) > 0 or kwargs.get("scale", None) is not None:
+            deprecation_message = "The `scale` argument is deprecated and will be ignored. Please remove it, as passing it will raise an error in the future. `scale` should directly be passed while calling the underlying pipeline component i.e., via `cross_attention_kwargs`."
+            deprecate("scale", "1.0.0", deprecation_message)
+
+        residual = hidden_states
+        if attn.spatial_norm is not None:
+            hidden_states = attn.spatial_norm(hidden_states, temb)
+
+        input_ndim = hidden_states.ndim
+
+        if input_ndim == 4:
+            batch_size, channel, height, width = hidden_states.shape
+            hidden_states = hidden_states.view(
+                batch_size, channel, height * width
+            ).transpose(1, 2)
+
+        hidden_states_uncond, hidden_states_cond, hidden_states_ptb = hidden_states.chunk(3)
+        hidden_states = torch.cat([hidden_states_uncond, hidden_states_cond])
+
+        freqs_cis_1, freqs_cis_2 = freqs_cis
+        freqs_cis_1_uncond, freqs_cis_1_cond, freqs_cis_1_perturb = freqs_cis_1.chunk(3)
+        freqs_cis_2_uncond, freqs_cis_2_cond, freqs_cis_2_perturb = freqs_cis_2.chunk(3)
+
+        freqs_cis_1 = torch.cat([freqs_cis_1_uncond, freqs_cis_1_cond])
+        freqs_cis_2 = torch.cat([freqs_cis_2_uncond, freqs_cis_2_cond])
+
+        freqs_cis = (freqs_cis_1, freqs_cis_2)
+
+        batch_size, sequence_length, _ = (
+            hidden_states.shape
+            if encoder_hidden_states is None
+            else encoder_hidden_states.shape
+        )
+
+        if (attention_mask is not None) and (not attn.use_tpu_flash_attention):
+            attention_mask = attn.prepare_attention_mask(
+                attention_mask, sequence_length, batch_size
+            )
+            # scaled_dot_product_attention expects attention_mask shape to be
+            # (batch, heads, source_length, target_length)
+            attention_mask = attention_mask.view(
+                batch_size, attn.heads, -1, attention_mask.shape[-1]
+            )
+
+        if attn.group_norm is not None:
+            hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(
+                1, 2
+            )
+
+        query = attn.to_q(hidden_states)
+        query = attn.q_norm(query)
+
+        if encoder_hidden_states is not None:
+            if attn.norm_cross:
+                encoder_hidden_states = attn.norm_encoder_hidden_states(
+                    encoder_hidden_states
+                )
+            key = attn.to_k(encoder_hidden_states)
+            key = attn.k_norm(key)
+        else:  # if no context provided do self-attention
+            encoder_hidden_states = hidden_states
+            key = attn.to_k(hidden_states)
+            key = attn.k_norm(key)
+            if attn.use_rope:
+                key = attn.apply_rotary_emb(key, freqs_cis)
+                query = attn.apply_rotary_emb(query, freqs_cis)
+
+        value = attn.to_v(encoder_hidden_states)
+
+        inner_dim = key.shape[-1]
+        head_dim = inner_dim // attn.heads
+
+        query = query.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+        key = key.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+        value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+
+        # the output of sdp = (batch, num_heads, seq_len, head_dim)
+
+        if attn.use_tpu_flash_attention:  # use tpu attention offload 'flash attention'
+            assert False, "Flash Attention not supported in STG"
+        else:
+            hidden_states = F.scaled_dot_product_attention(
+                query,
+                key,
+                value,
+                attn_mask=attention_mask,
+                dropout_p=0.0,
+                is_causal=False,
+            )
+
+        hidden_states = hidden_states.transpose(1, 2).reshape(
+            batch_size, -1, attn.heads * head_dim
+        )
+        hidden_states = hidden_states.to(query.dtype)
+
+        # linear proj
+        hidden_states = attn.to_out[0](hidden_states)
+        # dropout
+        hidden_states = attn.to_out[1](hidden_states)
+
+        if input_ndim == 4:
+            hidden_states = hidden_states.transpose(-1, -2).reshape(
+                batch_size, channel, height, width
+            )
+
+        batch_size, sequence_length, _ = hidden_states_ptb.shape
+
+        if (attention_mask is not None) and (not attn.use_tpu_flash_attention):
+            attention_mask = attn.prepare_attention_mask(
+                attention_mask, sequence_length, batch_size
+            )
+            # scaled_dot_product_attention expects attention_mask shape to be
+            # (batch, heads, source_length, target_length)
+            attention_mask = attention_mask.view(
+                batch_size, attn.heads, -1, attention_mask.shape[-1]
+            )
+
+        if attn.group_norm is not None:
+            hidden_states_ptb = attn.group_norm(hidden_states_ptb.transpose(1, 2)).transpose(
+                1, 2
+            )
+
+        key = attn.to_k(hidden_states_ptb)
+        value = attn.to_v(hidden_states_ptb)
+
+        inner_dim = key.shape[-1]
+        head_dim = inner_dim // attn.heads
+
+        value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
+
+        # the output of sdp = (batch, num_heads, seq_len, head_dim)
+
+        hidden_states_ptb = value
+
+        hidden_states_ptb = hidden_states_ptb.transpose(1, 2).reshape(
+            batch_size, -1, attn.heads * head_dim
+        )
+        hidden_states_ptb = hidden_states_ptb.to(value.dtype)
+
+        # linear proj
+        hidden_states_ptb = attn.to_out[0](hidden_states_ptb)
+        # dropout
+        hidden_states_ptb = attn.to_out[1](hidden_states_ptb)
+
+        if input_ndim == 4:
+            hidden_states_ptb = hidden_states_ptb.transpose(-1, -2).reshape(
+                batch_size, channel, height, width
+            )
+
+        hidden_states = torch.cat([hidden_states, hidden_states_ptb])
+        freqs_cis_1 = torch.cat([freqs_cis_1_uncond, freqs_cis_1_cond, freqs_cis_1_perturb])
+        freqs_cis_2 = torch.cat([freqs_cis_2_uncond, freqs_cis_2_cond, freqs_cis_2_perturb])
+
+        freqs_cis = (freqs_cis_1, freqs_cis_2)
+
+        if attn.residual_connection:
+            hidden_states = hidden_states + residual
+
+        hidden_states = hidden_states / attn.rescale_output_factor
+
+        return hidden_states
 
 class LTXVideoPipeline(DiffusionPipeline):
     r"""
@@ -736,6 +1054,47 @@ class LTXVideoPipeline(DiffusionPipeline):
 
         return samples
 
+    def extract_layers(self, file_path="./unet_info.txt"):
+        """
+        Extract down, mid, and up layers from the UNet model and save to a file.
+
+        Args:
+            temporal (bool): Whether to extract temporal layers or not.
+            file_path (str): The file path to save layer information.
+        
+        Returns:
+            Tuple: (down_layers, mid_layers, up_layers)
+        """
+        layers = []
+        with open(file_path, "w") as f:
+            for name, module in self.transformer.named_modules():
+                if "attn1" in name and "to" not in name and "norm" not in name:
+                    f.write(f"{name}\n")
+                    layer_type = name.split(".")[0].split("_")[0]
+                    layers.append((name, module))
+
+        return layers
+
+    def replace_layer_processor(self, layers, stg_block_idx, replace_processor, initialize=False,):
+        """
+        Replace the processor for specified layers in the network.
+
+        Args:
+            layers (list): A list of tuples where each tuple contains (name, module) of the layer.
+            stg_block_idx (list): A list of indices specifying which layers to replace.
+            replace_processor (Callable): The processor to replace with.
+        """
+        if initialize:
+            replace_processor = AttnProcessor2_0
+            for l in layers:
+                l[1].processor = replace_processor
+            print(f"[INFO] All layers are initialized with {replace_processor}")
+        else:
+            for bidx in stg_block_idx:
+                layers[bidx][1].processor = replace_processor
+            print(f"[INFO] Layers are replaced with {replace_processor}")
+        return
+
     @torch.no_grad()
     def __call__(
         self,
@@ -748,6 +1107,11 @@ class LTXVideoPipeline(DiffusionPipeline):
         num_inference_steps: int = 20,
         timesteps: List[int] = None,
         guidance_scale: float = 4.5,
+        stg_mode: str = "stg-a",
+        stg_scale: float = 0.0,
+        stg_block_idx: list = [19],
+        do_rescaling: bool = True,
+        rescaling_scale: float = 0.7,
         num_images_per_prompt: Optional[int] = 1,
         eta: float = 0.0,
         generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
@@ -869,6 +1233,19 @@ class LTXVideoPipeline(DiffusionPipeline):
         # corresponds to doing no classifier free guidance.
         do_classifier_free_guidance = guidance_scale > 1.0
 
+        do_spatio_temporal_guidance = stg_scale > 0.0
+        if do_spatio_temporal_guidance:
+            layers = self.extract_layers()
+            if stg_mode == "stg-r":
+                replace_processor = STGResidualProcessor()
+            elif stg_mode == "stg-a":
+                replace_processor = STGAttentionProcessor()
+            else:
+                assert False, "Invalid stg mode"
+            self.replace_layer_processor(layers, 
+                                        stg_block_idx,
+                                        replace_processor)
+
         # 3. Encode input prompt
         (
             prompt_embeds,
@@ -887,10 +1264,15 @@ class LTXVideoPipeline(DiffusionPipeline):
             negative_prompt_attention_mask=negative_prompt_attention_mask,
             clean_caption=clean_caption,
         )
-        if do_classifier_free_guidance:
+        if do_classifier_free_guidance and not do_spatio_temporal_guidance:
             prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
             prompt_attention_mask = torch.cat(
                 [negative_prompt_attention_mask, prompt_attention_mask], dim=0
+            )
+        elif do_spatio_temporal_guidance:
+            prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds, prompt_embeds], dim=0)
+            prompt_attention_mask = torch.cat(
+                [negative_prompt_attention_mask, prompt_attention_mask, prompt_attention_mask], dim=0
             )
 
         # 3b. Encode and prepare conditioning data
@@ -928,7 +1310,10 @@ class LTXVideoPipeline(DiffusionPipeline):
             assert num_images_per_prompt == 1
             conditioning_mask = (
                 torch.cat([conditioning_mask] * 2)
-                if do_classifier_free_guidance
+                if do_classifier_free_guidance and not do_spatio_temporal_guidance
+                else
+                torch.cat([conditioning_mask] * 3)
+                if do_spatio_temporal_guidance
                 else conditioning_mask
             )
 
@@ -954,9 +1339,11 @@ class LTXVideoPipeline(DiffusionPipeline):
 
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
-                latent_model_input = (
-                    torch.cat([latents] * 2) if do_classifier_free_guidance else latents
-                )
+                if do_classifier_free_guidance and not do_spatio_temporal_guidance:
+                    latent_model_input = torch.cat([latents] * 2) 
+                elif do_spatio_temporal_guidance:
+                    latent_model_input = torch.cat([latents] * 3) 
+
                 latent_model_input = self.scheduler.scale_model_input(
                     latent_model_input, t
                 )
@@ -1033,12 +1420,24 @@ class LTXVideoPipeline(DiffusionPipeline):
                     )[0]
 
                 # perform guidance
-                if do_classifier_free_guidance:
+                if do_classifier_free_guidance and not do_spatio_temporal_guidance:
                     noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
                     noise_pred = noise_pred_uncond + guidance_scale * (
                         noise_pred_text - noise_pred_uncond
                     )
                     current_timestep, _ = current_timestep.chunk(2)
+                elif do_spatio_temporal_guidance:
+                    noise_pred_uncond, noise_pred_text, noise_pred_text_perturb = noise_pred.chunk(3)                        
+
+                    noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond) \
+                                                    + stg_scale * (noise_pred_text - noise_pred_text_perturb)
+                    
+                    if do_rescaling:
+                        factor = noise_pred_text.std() / noise_pred.std()
+                        factor = rescaling_scale * factor + (1 - rescaling_scale)
+                        noise_pred = noise_pred * factor
+                    
+                    current_timestep, _, _ = current_timestep.chunk(3)
 
                 # learned sigma
                 if (

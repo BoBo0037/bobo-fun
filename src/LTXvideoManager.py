@@ -52,6 +52,11 @@ class LTXVideoManager():
         self.num_images_per_prompt : int = 1
         self.num_inference_steps: int = 40
         self.seed : int = None
+        # stg settings
+        self.stg_mode : str = "stg-a"       # Choose between 'stg-a' or 'stg-r'
+        self.stg_scale : float = 0.0        # Recommended values are ≤2.0 (stg_scale = 0.0 means do not using stg)
+        self.stg_block_idx : list = [19, 20]    # Specify the block index for applying STG
+        self.do_rescaling : bool = False     # Set to True to enable rescaling
 
     def cleanup(self):
         print("Run cleanup")
@@ -154,6 +159,9 @@ class LTXVideoManager():
             num_images_per_prompt=self.num_images_per_prompt,
             guidance_scale=self.guidance_scale,
             generator=self.generator,
+            stg_mode=self.stg_mode,
+            stg_scale=self.stg_scale,
+            stg_block_idx=self.stg_block_idx,
             output_type="pt",
             callback_on_step_end=None,
             height=self.height_padded,
@@ -211,6 +219,10 @@ class LTXVideoManager():
                     seed=self.seed,
                     resolution=(height, width, self.num_frames),
                     dir=self.output_dir,
+                    stg_mode=self.stg_mode,
+                    stg_scale=self.stg_scale,
+                    stg_block_idx=self.stg_block_idx,
+                    do_rescaling=self.do_rescaling,
                 )
 
                 # Write video
@@ -276,6 +288,19 @@ class LTXVideoManager():
         print(f"Set video frame rate and num of frames to '{self.frame_rate}' and '{self.num_frames}'")
         print(f"Set num of inference steps to '{self.num_inference_steps}'")
 
+    def set_stg(self,
+                stg_mode : str = "stg-r",
+                stg_scale : float = 0.0,
+                stg_block_idx : list = [19],
+                do_rescaling : bool = True) -> None:
+        self.stg_mode = stg_mode
+        self.stg_scale = stg_scale
+        self.stg_block_idx = stg_block_idx
+        self.do_rescaling = do_rescaling
+        print(f"Set stg mode to '{self.stg_mode}'")
+        print(f"Set stg scale to '{self.stg_scale}'")
+        print(f"Set stg block idx to '{self.stg_block_idx}'")
+        print(f"Set stg do rescaling to '{self.do_rescaling}'")
 
 def load_vae(vae_dir):
     vae_ckpt_path = vae_dir / "vae_diffusion_pytorch_model.safetensors"
@@ -389,8 +414,20 @@ def get_unique_filename(
     dir: Path,
     endswith=None,
     index_range=1000,
+    stg_mode: str = "stg-a",
+    stg_scale: float = 0.0,
+    stg_block_idx: list = [19],
+    do_rescaling: bool = True,
 ) -> Path:
-    base_filename = f"{base}_{convert_prompt_to_filename(prompt, max_len=30)}_{seed}_{resolution[0]}x{resolution[1]}x{resolution[2]}"
+    mode = "CFG" if stg_scale == 0 else stg_mode.upper()
+    if mode == "CFG":
+        suffix = f"{mode}"
+    else:
+        suffix = f"{mode}_{stg_scale}_{stg_block_idx}"
+    if do_rescaling:
+        suffix = f"{suffix}_rescaled"
+
+    base_filename = f"{base}_{convert_prompt_to_filename(prompt, max_len=30)}_{seed}_{resolution[0]}x{resolution[1]}x{resolution[2]}_{suffix}"
     for i in range(index_range):
         filename = dir / f"{base_filename}_{i}{endswith if endswith else ''}{ext}"
         if not os.path.exists(filename):

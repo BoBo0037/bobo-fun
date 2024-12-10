@@ -55,7 +55,7 @@ python run_cogvideo.py
 ```sh
 PYTORCH_ENABLE_MPS_FALLBACK=1 python run_cogvideofun.py
 ```
-- [LTX-Video](https://github.com/Lightricks/LTX-Video)
+- [LTX-Video](https://github.com/Lightricks/LTX-Video) with [STGuidance](https://github.com/junhahyung/STGuidance)
 ```sh
 python run_ltxvideo.py
 ```
