@@ -67,6 +67,11 @@ python run_mochi.py
 ```sh
 python run_hyvideo.py
 ```
+- [xinntao/Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
+```sh
+python run_realesrgan_img.py
+python run_realesrgan_video.py
+```
 - [hzwer/ECCV2022-RIFE](https://github.com/hzwer/ECCV2022-RIFE)
 ```sh
 python run_rife_img.py
@@ -92,18 +97,15 @@ python run_suno_bark.py
 
 
 ## TODO:
-- [x] support flux.1
-- [x] support THUDM/glm-4-9b-chat
-- [x] support microsoft/Phi-3.5-mini-instruct
-- [x] support VectorSpaceLab/OmniGen
-- [x] support THUDM/CogVideo
-- [x] support aigc-apps/CogVideoX-Fun
-- [X] support Lightricks/LTX-Video
-- [X] support genmoai/mochi
-- [X] support Tencent/HunyuanVideo
-- [X] support hzwer/ECCV2022-RIFE
-- [X] support suno-ai/bark
-<!-- - [ ] support k4yt3x/video2x -->
-<!-- - [ ] support RVC-Boss/GPT-SoVITS -->
-<!-- - [ ] support facebookresearch/audiocraft -->
-<!-- - [ ] support haoheliu/AudioLDM2 -->
+- [x] support THUDM/glm-4-9b-chat               (文生文)
+- [x] support microsoft/Phi-3.5-mini-instruct   (文生文)
+- [x] support flux.1                            (文生图)
+- [x] support VectorSpaceLab/OmniGen            (文生图)
+- [x] support THUDM/CogVideo                    (文生视频)
+- [x] support aigc-apps/CogVideoX-Fun           (文生视频)
+- [X] support Lightricks/LTX-Video              (文生视频)
+- [X] support genmoai/mochi                     (文生视频)
+- [X] support Tencent/HunyuanVideo              (文生视频)
+- [X] support xinntao/Real-ESRGAN               (视频超分)
+- [X] support hzwer/ECCV2022-RIFE               (视频插帧)
+- [X] support suno-ai/bark                      (文生音频)
