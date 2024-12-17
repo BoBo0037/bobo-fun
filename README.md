@@ -67,6 +67,11 @@ python run_mochi.py
 ```sh
 python run_hyvideo.py
 ```
+- [hzwer/ECCV2022-RIFE](https://github.com/hzwer/ECCV2022-RIFE)
+```sh
+python run_rife_img.py
+python run_rife_video.py
+```
 - [suno-ai/bark](https://github.com/suno-ai/bark)
 ```sh
 python run_suno_bark.py
@@ -96,8 +101,8 @@ python run_suno_bark.py
 - [X] support Lightricks/LTX-Video
 - [X] support genmoai/mochi
 - [X] support Tencent/HunyuanVideo
+- [X] support hzwer/ECCV2022-RIFE
 - [X] support suno-ai/bark
-- [ ] support GSeanCDAT/GIMM-VFI
 <!-- - [ ] support k4yt3x/video2x -->
 <!-- - [ ] support RVC-Boss/GPT-SoVITS -->
 <!-- - [ ] support facebookresearch/audiocraft -->
