@@ -73,8 +73,7 @@ python run_realesrgan.py
 ```
 - [hzwer/ECCV2022-RIFE](https://github.com/hzwer/ECCV2022-RIFE)
 ```sh
-python run_rife_img.py
-python run_rife_video.py
+python run_rife.py
 ```
 - [suno-ai/bark](https://github.com/suno-ai/bark)
 ```sh
@@ -95,7 +94,7 @@ python run_suno_bark.py
    hyvideo: spatial_tiled_decode() -> decoded = self.decoder(tile) -> sample = self.conv_in(sample) 这里输入 sample 后得出全 nan 的 值, 导致纯黑问题。
 
 
-## TODO:
+## Supports:
 - [x] support THUDM/glm-4-9b-chat               (文生文)
 - [x] support microsoft/Phi-3.5-mini-instruct   (文生文)
 - [x] support flux.1                            (文生图)

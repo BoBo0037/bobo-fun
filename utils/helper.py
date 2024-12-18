@@ -1,6 +1,7 @@
 import os
 #os.environ["HF_ENDPOINT"]="https://hf-mirror.com"
 #os.environ["IMAGEIO_FFMPEG_EXE"] = "/opt/homebrew/Cellar/ffmpeg"
+import numpy as np
 import stat
 import subprocess
 import torch
@@ -25,6 +26,13 @@ def set_device():
         print("Set device to 'cpu'")
         device = torch.device('cpu')
     return device
+
+def check_numpy_version():
+    np_version = [int(i) for i in np.__version__.split('.')]
+    print("numpy version: ", np_version)
+    if np_version[0] == 2 or (np_version[0] == 1 and np_version[1] >= 20):
+        np.float = float
+        np.int = int
 
 def show_img(file_path : str, title : str) -> None:
     if platform.system() == "Darwin":
