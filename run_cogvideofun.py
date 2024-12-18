@@ -18,7 +18,7 @@ rewrited_prompt = prompt_manager.rewriter.rewrite_video_prompt(original_prompt)
 # fps=8, num_frames = 24, around 3 seconds video
 # fps=6, num_frames = 24, around 4 seconds video
 cogVideoFun.set_prompt(prompt=rewrited_prompt)
-cogVideoFun.set_validation_images(validation_image_start="imgs/suv.png")
+cogVideoFun.set_validation_images(validation_image_start="assets/imgs/suv.png")
 cogVideoFun.set_output_layout(
     output_path="output_cogvideox_fun", 
     width= 768, 

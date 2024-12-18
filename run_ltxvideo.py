@@ -28,7 +28,7 @@ ltx.set_stg(
     do_rescaling=True  # Set to True to enable rescaling
 )
 
-#ltx.set_input_image("imgs/suv.png")
+#ltx.set_input_image("assets/imgs/suv.png")
 
 # setup
 ltx.setup()

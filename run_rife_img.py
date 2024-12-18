@@ -19,7 +19,7 @@ parser.add_argument('--model', dest='modelDir', type=str, default='src/rife/trai
 args = parser.parse_args()
 
 # set args
-args.img = ["imgs/boy/one.png", "imgs/boy/two.png"]
+args.img = ["assets/imgs/boy/one.png", "assets/imgs/boy/two.png"]
 args.exp = 6
 print(f"Set args to: '{args}'")
 

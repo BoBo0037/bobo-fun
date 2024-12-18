@@ -56,7 +56,7 @@ class VideoCutManager:
 if __name__ == "__main__":
     videocut_manager = VideoCutManager()
     videocut_manager.concatenate_videos(
-        video_A = "../videos/suv1.mp4",
-        video_B = "../videos/suv2.mp4",
-        video_merged = "../videos/merged.mp4"
+        video_A = "../assets/vids/suv1.mp4",
+        video_B = "../assets/vids/suv2.mp4",
+        video_merged = "../assets/vids/merged.mp4"
     )

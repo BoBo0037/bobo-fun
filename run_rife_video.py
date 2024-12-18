@@ -77,8 +77,8 @@ parser.add_argument('--exp', dest='exp', type=int, default=1)
 args = parser.parse_args()
 
 # set args
-args.video = "videos/low_fps_sample.mp4"
-args.output = "videos/interpolated_demo.mp4"
+args.video = "assets/vids/dog.mp4"
+args.output = "assets/vids/interpolated_demo.mp4"
 args.exp = 2
 args.scale = 1.0
 args.fp16 = True

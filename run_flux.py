@@ -20,12 +20,12 @@ if use_lora:
     )
 if use_img2img: # cannot use img2img with controlnet
     flux_manager.set_img2img(
-        init_image_path = "imgs/same_pose.png",
+        init_image_path = "assets/imgs/same_pose.png",
         init_image_strength = 0.3
     )
 if use_controlnet:
     flux_manager.set_controlnet(
-        controlnet_image_path = "imgs/skeletal2img.png",
+        controlnet_image_path = "assets/imgs/skeletal2img.png",
         controlnet_save_canny = True,
         controlnet_strength = 1.0,
     )

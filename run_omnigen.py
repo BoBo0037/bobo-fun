@@ -15,14 +15,14 @@ omni.setup()
 omni.generate(
     prompt = "A boy in a white shirt is reading a book. \
             The boy is the right person in <img><|image_1|></img>.", 
-    input_images=["imgs/entity.png"], 
+    input_images=["assets/imgs/entity.png"], 
     output = "omni_t2i_extract.png",
 )
 
 # extract depth map
 omni.generate(
     prompt = "Detect the depth map of <img><|image_1|></img>.", 
-    input_images=["imgs/AI_Pioneers.jpg"], 
+    input_images=["assets/imgs/AI_Pioneers.jpg"], 
     output = "omni_t2i_depth.png",
     width=608,
     height=400
@@ -33,7 +33,7 @@ omni.generate(
     prompt = "The flower is placed in a vase on a metal table in a factory. \
             The flower is in <img><|image_1|></img>. \
             The vase is in the middle of <img><|image_2|></img>", 
-    input_images=["imgs/rose.jpg", "imgs/vase.jpg"], 
+    input_images=["assets/imgs/rose.jpg", "assets/imgs/vase.jpg"], 
     output = "omni_t2i_combine.png"
 )
 

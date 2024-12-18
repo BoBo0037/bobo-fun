@@ -27,7 +27,7 @@ cogVideo.set_output_layout(
     num_inference_steps=50
 )
 
-#cogVideo.set_input_image_or_video("imgs/panda.png")
+#cogVideo.set_input_image_or_video("assets/imgs/panda.png")
 
 # generate
 cogVideo.generate()
