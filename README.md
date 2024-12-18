@@ -69,8 +69,7 @@ python run_hyvideo.py
 ```
 - [xinntao/Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
 ```sh
-python run_realesrgan_img.py
-python run_realesrgan_video.py
+python run_realesrgan.py
 ```
 - [hzwer/ECCV2022-RIFE](https://github.com/hzwer/ECCV2022-RIFE)
 ```sh
