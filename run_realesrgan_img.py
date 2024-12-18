@@ -2,12 +2,25 @@ import argparse
 import cv2
 import glob
 import os
+import torch
 from basicsr.archs.rrdbnet_arch import RRDBNet
 from basicsr.utils.download_util import load_file_from_url
 
 from src.realesrgan import RealESRGANer
 from src.realesrgan.archs.srvgg_arch import SRVGGNetCompact
 
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+    os.environ["PYTORCH_MPS_VISUALIZE_ALLOCATIONS"] = "1"
+    os.environ["PYTORCH_MPS_TENSOR_CORE_ENABLED"] = "1"
+    os.environ["ACCELERATE_USE_MPS_DEVICE"] = "1"
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+    torch.backends.cudnn.enabled = True
+    torch.backends.cudnn.benchmark = True
+else:
+    device = torch.device("cpu")
 
 def main():
     """Inference demo for Real-ESRGAN.
@@ -59,6 +72,7 @@ def main():
     args.model_name = "realesr-general-x4v3"
     args.outscale=4
     args.face_enhance=True
+    print(f"Set args to: '{args}'")
 
     # determine models according to model names
     args.model_name = args.model_name.split('.')[0]
@@ -109,6 +123,7 @@ def main():
         model_path = [model_path, wdn_model_path]
         dni_weight = [args.denoise_strength, 1 - args.denoise_strength]
 
+    print("start processe image")
     # restorer
     upsampler = RealESRGANer(
         scale=netscale,
@@ -119,7 +134,8 @@ def main():
         tile_pad=args.tile_pad,
         pre_pad=args.pre_pad,
         half=not args.fp32,
-        gpu_id=args.gpu_id)
+        gpu_id=args.gpu_id,
+        device=device)
 
     if args.face_enhance:  # Use GFPGAN for face enhancement
         from gfpgan import GFPGANer
