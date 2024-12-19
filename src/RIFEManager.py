@@ -157,9 +157,12 @@ class RIFEManager:
                 os.mkdir('vid_out')
         else:
             if args.output is not None:
+                if not os.path.exists(args.output):
+                    os.makedirs(os.path.dirname(args.output))
                 vid_out_name = args.output
             else:
                 vid_out_name = '{}_{}X_{}fps.{}'.format(video_path_wo_ext, (2 ** args.exp), int(np.round(args.fps)), args.ext)
+            fourcc = cv2.VideoWriter_fourcc(*'H264')
             vid_out = cv2.VideoWriter(vid_out_name, fourcc, args.fps, (w, h))
 
         if args.montage:
