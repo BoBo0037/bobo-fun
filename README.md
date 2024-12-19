@@ -67,6 +67,10 @@ python run_mochi.py
 ```sh
 python run_hyvideo.py
 ```
+- [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion)
+```sh
+python run_mimic_motion.py
+```
 - [xinntao/Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
 ```sh
 python run_realesrgan.py
@@ -104,6 +108,7 @@ python run_suno_bark.py
 - [X] support Lightricks/LTX-Video              (文生视频)
 - [X] support genmoai/mochi                     (文生视频)
 - [X] support Tencent/HunyuanVideo              (文生视频)
+- [X] support Tencent/MimicMotion               (动作/跳舞)
 - [X] support xinntao/Real-ESRGAN               (视频超分)
 - [X] support hzwer/ECCV2022-RIFE               (视频插帧)
 - [X] support suno-ai/bark                      (文生音频)
