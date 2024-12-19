@@ -67,7 +67,7 @@ python run_mochi.py
 ```sh
 python run_hyvideo.py
 ```
-- [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion)
+- [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion) ---------> **PS. black video bug**
 ```sh
 python run_mimic_motion.py
 ```
@@ -97,6 +97,7 @@ python run_suno_bark.py
 
    hyvideo: spatial_tiled_decode() -> decoded = self.decoder(tile) -> sample = self.conv_in(sample) 这里输入 sample 后得出全 nan 的 值, 导致纯黑问题。
 
+4. MimicMotion 也有输出黑色视频问题, 有待测试其他环境
 
 ## Supports:
 - [x] support THUDM/glm-4-9b-chat               (文生文)
