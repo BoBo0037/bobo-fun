@@ -32,7 +32,7 @@ import os
 
 from openai import OpenAI
 
-from cogvideoxfun.video_caption.caption_rewrite import extract_output
+from cogvideox.video_caption.caption_rewrite import extract_output
 
 
 def parse_args():

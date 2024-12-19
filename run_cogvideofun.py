@@ -10,7 +10,7 @@ cogVideoFun = CogVideoFunManager(device, torch.bfloat16)
 
 # rewrite prompt to video mode
 prompt_manager = PromptManager("prompts.json")
-original_prompt = prompt_manager.get("astronaut-horse")
+original_prompt = prompt_manager.get("suv")
 rewrited_prompt = prompt_manager.rewriter.rewrite_video_prompt(original_prompt)
 
 # settings

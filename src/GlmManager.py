@@ -51,7 +51,7 @@ class GlmManager():
             text_inputs = query,
             streamer=self.streamer if use_streamer else None, 
             max_new_tokens = 256,
-            temperature = 0.3,
+            temperature = 0.5,
             do_sample = True,
             return_full_text = False
         )
