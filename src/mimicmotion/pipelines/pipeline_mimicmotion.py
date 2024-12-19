@@ -547,7 +547,7 @@ class MimicMotionPipeline(DiffusionPipeline):
         self.unet.to(device)
 
         if device.type == "mps":
-            pass
+            torch.mps.empty_cache()
         else:
             with torch.cuda.device(device):
                 torch.cuda.empty_cache()

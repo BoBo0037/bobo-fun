@@ -152,6 +152,7 @@ class LTXVideoManager():
         self.pipeline = LTXVideoPipeline(**submodel_dict).to(self.device)
         self.generator=torch.Generator().manual_seed(self.seed)
 
+    @torch.inference_mode()
     def generate(self):
         print("Start generate video")
         images = self.pipeline(
