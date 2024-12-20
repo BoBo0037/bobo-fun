@@ -33,7 +33,7 @@ class MochiManager():
     def cleanup(self):
         print("Run cleanup")
         gc.collect()
-        torch.cuda.empty_cache()
+        torch.mps.empty_cache()
 
     def download_weights(self, model_cache : str):
         repo_id = self.model

@@ -1,3 +1,4 @@
+import gc
 import os
 import subprocess
 import argparse
@@ -47,6 +48,11 @@ class MimicManager:
         self.guidance_scale = 2.0
         self.noise_aug_strength = 0
         self.seed = None
+
+    def cleanup(self):
+        print("Run cleanup")
+        gc.collect()
+        torch.mps.empty_cache()
 
     def download_model(self) -> None: 
         # models/

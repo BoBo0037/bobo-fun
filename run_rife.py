@@ -27,3 +27,6 @@ args.exp = 2
 args.scale = 1.0
 args.fp16 = True
 rife_manager.process_video(args)
+
+# release
+rife_manager.cleanup()

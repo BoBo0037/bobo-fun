@@ -16,8 +16,8 @@ class PhiManager():
 
     def cleanup(self):
         print("Run cleanup")
-        torch.cuda.empty_cache()
         gc.collect()
+        torch.mps.empty_cache()
 
     def setup(self):
         print("Init tokenizer")

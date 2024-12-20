@@ -1,3 +1,4 @@
+import gc
 import os
 import json
 import logging
@@ -13,6 +14,11 @@ class PromptManager:
         self.create_json_file_if_not_exists()
         self.prompts = self.load()
         self.rewriter = self.Rewriter()
+
+    def cleanup(self):
+        print("Run cleanup")
+        gc.collect()
+        torch.mps.empty_cache()
 
     def create_json_file_if_not_exists(self):
         if not os.path.exists(self.file_path):

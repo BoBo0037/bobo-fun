@@ -61,7 +61,7 @@ class LTXVideoManager():
     def cleanup(self):
         print("Run cleanup")
         gc.collect()
-        torch.cuda.empty_cache()
+        torch.mps.empty_cache()
 
     def setup(self):
         # seed

@@ -22,3 +22,6 @@ args.outscale=1
 args.face_enhance=True
 args.output = "output_RealESRGAN"
 realesrgan_manager.process_video(args)
+
+# release
+realesrgan_manager.cleanup()

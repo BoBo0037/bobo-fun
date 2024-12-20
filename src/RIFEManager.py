@@ -1,3 +1,4 @@
+import gc
 import os
 import time
 import cv2
@@ -20,6 +21,11 @@ class RIFEManager:
         self.device : torch.device = device
         self.dtype: torch.dtype = dtype
         self.model = None
+
+    def cleanup(self):
+        print("Run cleanup")
+        gc.collect()
+        torch.mps.empty_cache()
 
     def setup(self, args):        
         print("Loaded v3.x HD model.")

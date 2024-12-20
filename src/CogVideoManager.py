@@ -34,8 +34,8 @@ class CogVideoManager():
 
     def cleanup(self):
         print("Run cleanup")
-        torch.cuda.empty_cache()
         gc.collect()
+        torch.mps.empty_cache()
 
     def generate(self):
         # seed

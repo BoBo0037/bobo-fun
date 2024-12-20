@@ -1,3 +1,4 @@
+import gc
 import os
 import cv2
 import glob
@@ -23,6 +24,11 @@ class RealESRGANManager:
         self.model = None
         self.netscale = None
         self.file_url = None
+
+    def cleanup(self):
+        print("Run cleanup")
+        gc.collect()
+        torch.mps.empty_cache()
 
     def process_img(self, args):
         print("Start a image process!")

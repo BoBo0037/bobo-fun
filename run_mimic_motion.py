@@ -21,3 +21,6 @@ mimic_manager.set_output_layout(
 )
 # generate video
 mimic_manager.run()
+
+# release
+mimic_manager.cleanup()

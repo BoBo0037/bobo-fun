@@ -1,3 +1,4 @@
+import gc
 import logging
 import numpy as np
 from moviepy.editor import ImageSequenceClip, VideoFileClip, concatenate_videoclips
@@ -7,6 +8,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class VideoCutManager:
     def __init__(self):
         pass
+
+    def cleanup(self):
+        print("Run cleanup")
+        gc.collect()
 
     def save_video(self, input_frames, output_path, fps=30):
         if isinstance(input_frames, list):
