@@ -14,7 +14,7 @@ conda create --name bobo python=3.11
 conda activate bobo
 ```
 ```sh
-conda install pytorch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 -c pytorch
+pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu
 ```
 ```sh
 pip install -r requirements.txt
@@ -67,12 +67,8 @@ python run_mochi.py
 ```sh
 python run_hyvideo.py
 ```
-- [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion) ---------> **Need to use pytorch 2.5.1**
+- [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion)
 ```sh
-conda remove pytorch torchvision torchaudio
-pip uninstall torch torchvision torchaudio
-conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 -c pytorch
-pip install -r requirements.txt
 python run_mimic_motion.py
 ```
 - [xinntao/Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
@@ -87,12 +83,8 @@ python run_rife.py
 ```sh
 python run_suno_bark.py
 ```
-- [hkchengrex/MMAudio](https://github.com/hkchengrex/MMAudio)  ---------> **Need to use pytorch nightly**
+- [hkchengrex/MMAudio](https://github.com/hkchengrex/MMAudio)
 ```sh
-conda remove pytorch torchvision torchaudio
-pip uninstall torch torchvision torchaudio
-pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu
-pip install -r requirements.txt
 python run_mmaudio.py
 ```
 
