@@ -67,9 +67,10 @@ python run_mochi.py
 ```sh
 python run_hyvideo.py
 ```
-- [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion) ---------> Need to use PyTorch 2.5.1
+- [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion) ---------> **Need to use pytorch 2.5.1**
 ```sh
 conda remove pytorch torchvision torchaudio
+pip uninstall torch torchvision torchaudio
 conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 -c pytorch
 pip install -r requirements.txt
 python run_mimic_motion.py
@@ -85,6 +86,14 @@ python run_rife.py
 - [suno-ai/bark](https://github.com/suno-ai/bark)
 ```sh
 python run_suno_bark.py
+```
+- [hkchengrex/MMAudio](https://github.com/hkchengrex/MMAudio)  ---------> **Need to use pytorch nightly**
+```sh
+conda remove pytorch torchvision torchaudio
+pip uninstall torch torchvision torchaudio
+pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu
+pip install -r requirements.txt
+python run_mmaudio.py
 ```
 
 ## Issues:
@@ -113,4 +122,5 @@ python run_suno_bark.py
 - [X] support Tencent/MimicMotion               (动作/跳舞)
 - [X] support xinntao/Real-ESRGAN               (视频超分)
 - [X] support hzwer/ECCV2022-RIFE               (视频插帧)
-- [X] support suno-ai/bark                      (文生音频)
+- [X] support suno-ai/bark                      (文生音频, 擅长语音/对话)
+- [X] support hkchengrex/MMAudio                (文生音频, 擅长音效/音乐)
