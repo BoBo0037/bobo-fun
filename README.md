@@ -67,8 +67,11 @@ python run_mochi.py
 ```sh
 python run_hyvideo.py
 ```
-- [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion) ---------> **PS. black video bug**
+- [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion) ---------> Need to use PyTorch 2.5.1
 ```sh
+conda remove pytorch torchvision torchaudio
+conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 -c pytorch
+pip install -r requirements.txt
 python run_mimic_motion.py
 ```
 - [xinntao/Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
@@ -96,8 +99,6 @@ python run_suno_bark.py
    Mochi: sample_model() ---> model_fn() ---> out_cond 和 out_uncond 模型采样值为 tensor([[nan, nan, ..., nan, nan]...]), 导致纯黑问题。
 
    hyvideo: spatial_tiled_decode() -> decoded = self.decoder(tile) -> sample = self.conv_in(sample) 这里输入 sample 后得出全 nan 的 值, 导致纯黑问题。
-
-4. MimicMotion 也有输出黑色视频问题, 有待测试其他环境
 
 ## Supports:
 - [x] support THUDM/glm-4-9b-chat               (文生文)

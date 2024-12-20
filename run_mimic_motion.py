@@ -13,10 +13,11 @@ if need_download:
 mimic_manager.set_output_layout(
     ref_video_path="./assets/vids/dance_demo.mp4", 
     ref_image_path="./assets/imgs/1girl.jpg",
+    resolution=384,
     fps=8,
-    num_frames=17,
-    num_inference_steps=20,
-    frames_overlap=4
+    num_frames=25,
+    num_inference_steps=25,
+    frames_overlap=6
 )
 # generate video
 mimic_manager.run()
