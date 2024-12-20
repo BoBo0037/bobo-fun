@@ -69,6 +69,9 @@ python run_hyvideo.py
 ```
 - [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion)
 ```sh
+conda remove pytorch torchvision torchaudio
+conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 -c pytorch
+pip install -r requirements.txt
 python run_mimic_motion.py
 ```
 - [xinntao/Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
