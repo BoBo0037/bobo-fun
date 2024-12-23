@@ -95,11 +95,7 @@ python run_mmaudio.py
 ## Issues:
 1. 目前几乎所有文生视频项目, 当分辨率或生成帧数较大时, 都有 total bytes of NDArray > 2**32 或 Invalid buffer size 报错问题。这似乎是 mac 本身内部实现问题, 暂无太好方法。
 
-2. CogVideoX 系列整体效果比较好。 但目前 mac 上只建议 2b 模型, 5b 版有上述 1 中问题。CogVideoX-Fun 版类似, 整体更灵活, 动作幅度更大, 两者生成质量其实总体差不多, 各有优缺点。
-
-2. LTX-Video-2b 整体效果稍弱于 CogVideoX-2b。但它有生成速度快, 生成视频时间长, 支持多种模式等优点, 是目前最适合在 mac 上玩的文生视频模型, 非常期待后续更新。
-
-3. Mochi 和 hyvideo(效果应该是当下开源中最好) 目前均有纯黑视频 bug, 暂时没找到好方法解决。
+2. Mochi 和 hyvideo(效果应该是当下开源中最好) 目前均有纯黑视频 bug, 暂时没找到好方法解决。
 
    Mochi: sample_model() ---> model_fn() ---> out_cond 和 out_uncond 模型采样值为 tensor([[nan, nan, ..., nan, nan]...]), 导致纯黑问题。
 
