@@ -711,6 +711,10 @@ class LTXVideoPipeline(DiffusionPipeline):
             noise = randn_tensor(
                 shape, generator=generator, device=generator.device, dtype=dtype
             )
+            
+            if torch.backends.mps.is_available:
+                noise = noise.to("mps")
+
             latents = latents * latents_mask[..., None] + noise * (
                 1 - latents_mask[..., None]
             )

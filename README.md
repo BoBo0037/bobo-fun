@@ -32,20 +32,21 @@ Just run you want as belows
 ```sh
 python run_flux.py
 ```
-
 - [glm-4-9b-chat](https://huggingface.co/THUDM/glm-4-9b-chat)
 ```sh
 python run_glm.py
 ```
-
 - [Phi-3.5-mini-instruct](https://huggingface.co/microsoft/Phi-3.5-mini-instruct)
 ```sh
 python run_phi.py
 ```
-
 - [OmniGen](https://github.com/VectorSpaceLab/OmniGen)
 ```sh
 python run_omnigen.py
+```
+- [StoryDiffusion](https://github.com/HVision-NKU/StoryDiffusion)
+```sh
+python run_story_diffusion.py
 ```
 - [CogVideo](https://github.com/THUDM/CogVideo)
 ```sh
@@ -109,6 +110,7 @@ python run_mmaudio.py
 - [x] support microsoft/Phi-3.5-mini-instruct   (文生文)
 - [x] support flux.1                            (文生图)
 - [x] support VectorSpaceLab/OmniGen            (文生图)
+- [X] support HVision-NKU/StoryDiffusion        (文生图, 擅长故事)
 - [x] support THUDM/CogVideo                    (文生视频)
 - [x] support aigc-apps/CogVideoX-Fun           (文生视频)
 - [X] support Lightricks/LTX-Video              (文生视频)
