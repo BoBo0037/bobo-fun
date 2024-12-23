@@ -21,7 +21,7 @@ class SpatialAttnProcessor2_0(torch.nn.Module):
             the weight scale of image prompt.
     """
 
-    def __init__(self, hidden_size = None, cross_attention_dim=None,id_length = 4,device = "cuda",dtype = torch.float16):
+    def __init__(self, hidden_size = None, cross_attention_dim=None,id_length = 4,device = "cuda",dtype = torch.bfloat16):
         super().__init__()
         if not hasattr(F, "scaled_dot_product_attention"):
             raise ImportError("AttnProcessor2_0 requires PyTorch 2.0, to use it, please upgrade PyTorch to 2.0.")
@@ -219,7 +219,7 @@ class SpatialAttnProcessor2_0(torch.nn.Module):
         return hidden_states
 
 
-def cal_attn_mask(total_length,id_length,sa16,sa32,sa64,device="cuda",dtype= torch.float16):
+def cal_attn_mask(total_length,id_length,sa16,sa32,sa64,device="cuda",dtype= torch.bfloat16):
     bool_matrix256 = torch.rand((1, total_length * 256),device = device,dtype = dtype) < sa16
     bool_matrix1024 = torch.rand((1, total_length * 1024),device = device,dtype = dtype) < sa32
     bool_matrix4096 = torch.rand((1, total_length * 4096),device = device,dtype = dtype) < sa64
@@ -238,7 +238,7 @@ def cal_attn_mask(total_length,id_length,sa16,sa32,sa64,device="cuda",dtype= tor
     mask4096 = bool_matrix4096.unsqueeze(1).repeat(1,4096,1).reshape(-1,total_length * 4096)
     return mask256,mask1024,mask4096
 
-def cal_attn_mask_xl(total_length,id_length,sa32,sa64,height,width,device="cuda",dtype= torch.float16):
+def cal_attn_mask_xl(total_length,id_length,sa32,sa64,height,width,device="cuda",dtype= torch.bfloat16):
     nums_1024 = (height // 32) * (width // 32)
     nums_4096 = (height // 16) * (width // 16)
     bool_matrix1024 = torch.rand((1, total_length * nums_1024),device = device,dtype = dtype) < sa32
@@ -255,7 +255,7 @@ def cal_attn_mask_xl(total_length,id_length,sa32,sa64,height,width,device="cuda"
     return mask1024,mask4096
 
 
-def cal_attn_indice_xl_effcient_memory(total_length,id_length,sa32,sa64,height,width,device="cuda",dtype= torch.float16):
+def cal_attn_indice_xl_effcient_memory(total_length,id_length,sa32,sa64,height,width,device="cuda",dtype= torch.bfloat16):
     nums_1024 = (height // 32) * (width // 32)
     nums_4096 = (height // 16) * (width // 16)
     bool_matrix1024 = torch.rand((total_length,nums_1024),device = device,dtype = dtype) < sa32

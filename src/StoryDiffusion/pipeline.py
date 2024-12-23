@@ -27,7 +27,6 @@ PipelineImageInput = Union[
     List[torch.FloatTensor],
 ]
 
-
 class PhotoMakerStableDiffusionXLPipeline(StableDiffusionXLPipeline):
     @validate_hf_hub_args
     def load_photomaker_adapter(
@@ -125,7 +124,6 @@ class PhotoMakerStableDiffusionXLPipeline(StableDiffusionXLPipeline):
             self.tokenizer.add_tokens([self.trigger_word], special_tokens=True)
 
         self.tokenizer_2.add_tokens([self.trigger_word], special_tokens=True)
-
 
     def encode_prompt_with_trigger_word(
         self,
@@ -563,7 +561,7 @@ class PhotoMakerStableDiffusionXLPipeline(StableDiffusionXLPipeline):
                         callback(step_idx, t, latents)
 
         # make sure the VAE is in float32 mode, as it overflows in float16
-        if self.vae.dtype == torch.float16 and self.vae.config.force_upcast:
+        if self.vae.dtype == torch.bfloat16 and self.vae.config.force_upcast:
             self.upcast_vae()
             latents = latents.to(next(iter(self.vae.post_quant_conv.parameters())).dtype)
 
