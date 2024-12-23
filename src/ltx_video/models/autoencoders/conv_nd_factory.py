@@ -2,8 +2,8 @@ from typing import Tuple, Union
 
 import torch
 
-from .dual_conv3d import DualConv3d
-from .causal_conv3d import CausalConv3d
+from src.ltx_video.models.autoencoders.dual_conv3d import DualConv3d
+from src.ltx_video.models.autoencoders.causal_conv3d import CausalConv3d
 
 
 def make_conv_nd(

@@ -25,19 +25,19 @@ from diffusers.utils.torch_utils import randn_tensor
 from einops import rearrange
 from transformers import T5EncoderModel, T5Tokenizer
 
-from ..models.transformers.transformer3d import Transformer3DModel
-from ..models.transformers.symmetric_patchifier import Patchifier
-from ..models.transformers.attention import Attention, AttnProcessor2_0
-from ..models.autoencoders.vae_encode import (
+from src.ltx_video.models.transformers.transformer3d import Transformer3DModel
+from src.ltx_video.models.transformers.symmetric_patchifier import Patchifier
+from src.ltx_video.models.autoencoders.vae_encode import (
     get_vae_size_scale_factor,
     vae_decode,
     vae_encode,
 )
-from ..models.autoencoders.causal_video_autoencoder import (
+from src.ltx_video.models.autoencoders.causal_video_autoencoder import (
     CausalVideoAutoencoder,
 )
-from ..schedulers.rf import TimestepShifter
-from ..utils.conditioning_method import ConditioningMethod
+from src.ltx_video.schedulers.rf import TimestepShifter
+from src.ltx_video.utils.conditioning_method import ConditioningMethod
+from src.ltx_video.utils.skip_layer_strategy import SkipLayerStrategy
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -166,323 +166,6 @@ def retrieve_timesteps(
         timesteps = scheduler.timesteps
     return timesteps, num_inference_steps
 
-class STGResidualProcessor:
-    r"""
-    Processor for implementing scaled dot-product attention (enabled by default if you're using PyTorch 2.0).
-    """
-
-    def __init__(self):
-        pass
-
-    def __call__(
-        self,
-        attn: Attention,
-        hidden_states: torch.FloatTensor,
-        freqs_cis: Tuple[torch.FloatTensor, torch.FloatTensor],
-        encoder_hidden_states: Optional[torch.FloatTensor] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        temb: Optional[torch.FloatTensor] = None,
-        *args,
-        **kwargs,
-    ) -> torch.FloatTensor:
-        if len(args) > 0 or kwargs.get("scale", None) is not None:
-            deprecation_message = "The `scale` argument is deprecated and will be ignored. Please remove it, as passing it will raise an error in the future. `scale` should directly be passed while calling the underlying pipeline component i.e., via `cross_attention_kwargs`."
-            deprecate("scale", "1.0.0", deprecation_message)
-
-        residual = hidden_states
-        if attn.spatial_norm is not None:
-            hidden_states = attn.spatial_norm(hidden_states, temb)
-
-        input_ndim = hidden_states.ndim
-
-        if input_ndim == 4:
-            batch_size, channel, height, width = hidden_states.shape
-            hidden_states = hidden_states.view(
-                batch_size, channel, height * width
-            ).transpose(1, 2)
-
-        hidden_states_uncond, hidden_states_cond, hidden_states_ptb = hidden_states.chunk(3)
-        hidden_states = torch.cat([hidden_states_uncond, hidden_states_cond])
-
-        freqs_cis_1, freqs_cis_2 = freqs_cis
-        freqs_cis_1_uncond, freqs_cis_1_cond, freqs_cis_1_perturb = freqs_cis_1.chunk(3)
-        freqs_cis_2_uncond, freqs_cis_2_cond, freqs_cis_2_perturb = freqs_cis_2.chunk(3)
-
-        freqs_cis_1 = torch.cat([freqs_cis_1_uncond, freqs_cis_1_cond])
-        freqs_cis_2 = torch.cat([freqs_cis_2_uncond, freqs_cis_2_cond])
-
-        freqs_cis = (freqs_cis_1, freqs_cis_2)
-
-        batch_size, sequence_length, _ = (
-            hidden_states.shape
-            if encoder_hidden_states is None
-            else encoder_hidden_states.shape
-        )
-
-        if (attention_mask is not None) and (not attn.use_tpu_flash_attention):
-            attention_mask = attn.prepare_attention_mask(
-                attention_mask, sequence_length, batch_size
-            )
-            # scaled_dot_product_attention expects attention_mask shape to be
-            # (batch, heads, source_length, target_length)
-            attention_mask = attention_mask.view(
-                batch_size, attn.heads, -1, attention_mask.shape[-1]
-            )
-
-        if attn.group_norm is not None:
-            hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(
-                1, 2
-            )
-
-        query = attn.to_q(hidden_states)
-        query = attn.q_norm(query)
-
-        if encoder_hidden_states is not None:
-            if attn.norm_cross:
-                encoder_hidden_states = attn.norm_encoder_hidden_states(
-                    encoder_hidden_states
-                )
-            key = attn.to_k(encoder_hidden_states)
-            key = attn.k_norm(key)
-        else:  # if no context provided do self-attention
-            encoder_hidden_states = hidden_states
-            key = attn.to_k(hidden_states)
-            key = attn.k_norm(key)
-            if attn.use_rope:
-                key = attn.apply_rotary_emb(key, freqs_cis)
-                query = attn.apply_rotary_emb(query, freqs_cis)
-
-        value = attn.to_v(encoder_hidden_states)
-
-        inner_dim = key.shape[-1]
-        head_dim = inner_dim // attn.heads
-
-        query = query.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-        key = key.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-        value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-
-        # the output of sdp = (batch, num_heads, seq_len, head_dim)
-
-        if attn.use_tpu_flash_attention:  # use tpu attention offload 'flash attention'
-            assert False, "Flash Attention not supported in STG"
-        else:
-            hidden_states = F.scaled_dot_product_attention(
-                query,
-                key,
-                value,
-                attn_mask=attention_mask,
-                dropout_p=0.0,
-                is_causal=False,
-            )
-
-        hidden_states = hidden_states.transpose(1, 2).reshape(
-            batch_size, -1, attn.heads * head_dim
-        )
-        hidden_states = hidden_states.to(query.dtype)
-
-        # linear proj
-        hidden_states = attn.to_out[0](hidden_states)
-        # dropout
-        hidden_states = attn.to_out[1](hidden_states)
-
-        if input_ndim == 4:
-            hidden_states = hidden_states.transpose(-1, -2).reshape(
-                batch_size, channel, height, width
-            )
-
-        hidden_states = torch.cat([hidden_states, hidden_states_ptb])
-        freqs_cis_1 = torch.cat([freqs_cis_1_uncond, freqs_cis_1_cond, freqs_cis_1_perturb])
-        freqs_cis_2 = torch.cat([freqs_cis_2_uncond, freqs_cis_2_cond, freqs_cis_2_perturb])
-
-        freqs_cis = (freqs_cis_1, freqs_cis_2)
-
-        if attn.residual_connection:
-            hidden_states = hidden_states + residual
-
-        hidden_states = hidden_states / attn.rescale_output_factor
-
-        return hidden_states
-
-class STGAttentionProcessor:
-    r"""
-    Processor for implementing scaled dot-product attention (enabled by default if you're using PyTorch 2.0).
-    """
-
-    def __init__(self):
-        pass
-
-    def __call__(
-        self,
-        attn: Attention,
-        hidden_states: torch.FloatTensor,
-        freqs_cis: Tuple[torch.FloatTensor, torch.FloatTensor],
-        encoder_hidden_states: Optional[torch.FloatTensor] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        temb: Optional[torch.FloatTensor] = None,
-        *args,
-        **kwargs,
-    ) -> torch.FloatTensor:
-        if len(args) > 0 or kwargs.get("scale", None) is not None:
-            deprecation_message = "The `scale` argument is deprecated and will be ignored. Please remove it, as passing it will raise an error in the future. `scale` should directly be passed while calling the underlying pipeline component i.e., via `cross_attention_kwargs`."
-            deprecate("scale", "1.0.0", deprecation_message)
-
-        residual = hidden_states
-        if attn.spatial_norm is not None:
-            hidden_states = attn.spatial_norm(hidden_states, temb)
-
-        input_ndim = hidden_states.ndim
-
-        if input_ndim == 4:
-            batch_size, channel, height, width = hidden_states.shape
-            hidden_states = hidden_states.view(
-                batch_size, channel, height * width
-            ).transpose(1, 2)
-
-        hidden_states_uncond, hidden_states_cond, hidden_states_ptb = hidden_states.chunk(3)
-        hidden_states = torch.cat([hidden_states_uncond, hidden_states_cond])
-
-        freqs_cis_1, freqs_cis_2 = freqs_cis
-        freqs_cis_1_uncond, freqs_cis_1_cond, freqs_cis_1_perturb = freqs_cis_1.chunk(3)
-        freqs_cis_2_uncond, freqs_cis_2_cond, freqs_cis_2_perturb = freqs_cis_2.chunk(3)
-
-        freqs_cis_1 = torch.cat([freqs_cis_1_uncond, freqs_cis_1_cond])
-        freqs_cis_2 = torch.cat([freqs_cis_2_uncond, freqs_cis_2_cond])
-
-        freqs_cis = (freqs_cis_1, freqs_cis_2)
-
-        batch_size, sequence_length, _ = (
-            hidden_states.shape
-            if encoder_hidden_states is None
-            else encoder_hidden_states.shape
-        )
-
-        if (attention_mask is not None) and (not attn.use_tpu_flash_attention):
-            attention_mask = attn.prepare_attention_mask(
-                attention_mask, sequence_length, batch_size
-            )
-            # scaled_dot_product_attention expects attention_mask shape to be
-            # (batch, heads, source_length, target_length)
-            attention_mask = attention_mask.view(
-                batch_size, attn.heads, -1, attention_mask.shape[-1]
-            )
-
-        if attn.group_norm is not None:
-            hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(
-                1, 2
-            )
-
-        query = attn.to_q(hidden_states)
-        query = attn.q_norm(query)
-
-        if encoder_hidden_states is not None:
-            if attn.norm_cross:
-                encoder_hidden_states = attn.norm_encoder_hidden_states(
-                    encoder_hidden_states
-                )
-            key = attn.to_k(encoder_hidden_states)
-            key = attn.k_norm(key)
-        else:  # if no context provided do self-attention
-            encoder_hidden_states = hidden_states
-            key = attn.to_k(hidden_states)
-            key = attn.k_norm(key)
-            if attn.use_rope:
-                key = attn.apply_rotary_emb(key, freqs_cis)
-                query = attn.apply_rotary_emb(query, freqs_cis)
-
-        value = attn.to_v(encoder_hidden_states)
-
-        inner_dim = key.shape[-1]
-        head_dim = inner_dim // attn.heads
-
-        query = query.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-        key = key.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-        value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-
-        # the output of sdp = (batch, num_heads, seq_len, head_dim)
-
-        if attn.use_tpu_flash_attention:  # use tpu attention offload 'flash attention'
-            assert False, "Flash Attention not supported in STG"
-        else:
-            hidden_states = F.scaled_dot_product_attention(
-                query,
-                key,
-                value,
-                attn_mask=attention_mask,
-                dropout_p=0.0,
-                is_causal=False,
-            )
-
-        hidden_states = hidden_states.transpose(1, 2).reshape(
-            batch_size, -1, attn.heads * head_dim
-        )
-        hidden_states = hidden_states.to(query.dtype)
-
-        # linear proj
-        hidden_states = attn.to_out[0](hidden_states)
-        # dropout
-        hidden_states = attn.to_out[1](hidden_states)
-
-        if input_ndim == 4:
-            hidden_states = hidden_states.transpose(-1, -2).reshape(
-                batch_size, channel, height, width
-            )
-
-        batch_size, sequence_length, _ = hidden_states_ptb.shape
-
-        if (attention_mask is not None) and (not attn.use_tpu_flash_attention):
-            attention_mask = attn.prepare_attention_mask(
-                attention_mask, sequence_length, batch_size
-            )
-            # scaled_dot_product_attention expects attention_mask shape to be
-            # (batch, heads, source_length, target_length)
-            attention_mask = attention_mask.view(
-                batch_size, attn.heads, -1, attention_mask.shape[-1]
-            )
-
-        if attn.group_norm is not None:
-            hidden_states_ptb = attn.group_norm(hidden_states_ptb.transpose(1, 2)).transpose(
-                1, 2
-            )
-
-        key = attn.to_k(hidden_states_ptb)
-        value = attn.to_v(hidden_states_ptb)
-
-        inner_dim = key.shape[-1]
-        head_dim = inner_dim // attn.heads
-
-        value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-
-        # the output of sdp = (batch, num_heads, seq_len, head_dim)
-
-        hidden_states_ptb = value
-
-        hidden_states_ptb = hidden_states_ptb.transpose(1, 2).reshape(
-            batch_size, -1, attn.heads * head_dim
-        )
-        hidden_states_ptb = hidden_states_ptb.to(value.dtype)
-
-        # linear proj
-        hidden_states_ptb = attn.to_out[0](hidden_states_ptb)
-        # dropout
-        hidden_states_ptb = attn.to_out[1](hidden_states_ptb)
-
-        if input_ndim == 4:
-            hidden_states_ptb = hidden_states_ptb.transpose(-1, -2).reshape(
-                batch_size, channel, height, width
-            )
-
-        hidden_states = torch.cat([hidden_states, hidden_states_ptb])
-        freqs_cis_1 = torch.cat([freqs_cis_1_uncond, freqs_cis_1_cond, freqs_cis_1_perturb])
-        freqs_cis_2 = torch.cat([freqs_cis_2_uncond, freqs_cis_2_cond, freqs_cis_2_perturb])
-
-        freqs_cis = (freqs_cis_1, freqs_cis_2)
-
-        if attn.residual_connection:
-            hidden_states = hidden_states + residual
-
-        hidden_states = hidden_states / attn.rescale_output_factor
-
-        return hidden_states
 
 class LTXVideoPipeline(DiffusionPipeline):
     r"""
@@ -616,7 +299,7 @@ class LTXVideoPipeline(DiffusionPipeline):
         # See Section 3.1. of the paper.
         # FIXME: to be configured in config not hardecoded. Fix in separate PR with rest of config
         max_length = 128  # TPU supports only lengths multiple of 128
-
+        text_enc_device = next(self.text_encoder.parameters()).device
         if prompt_embeds is None:
             prompt = self._text_preprocessing(prompt, clean_caption=clean_caption)
             text_inputs = self.tokenizer(
@@ -644,10 +327,11 @@ class LTXVideoPipeline(DiffusionPipeline):
                 )
 
             prompt_attention_mask = text_inputs.attention_mask
+            prompt_attention_mask = prompt_attention_mask.to(text_enc_device)
             prompt_attention_mask = prompt_attention_mask.to(device)
 
             prompt_embeds = self.text_encoder(
-                text_input_ids.to(device), attention_mask=prompt_attention_mask
+                text_input_ids.to(text_enc_device), attention_mask=prompt_attention_mask
             )
             prompt_embeds = prompt_embeds[0]
 
@@ -688,10 +372,12 @@ class LTXVideoPipeline(DiffusionPipeline):
                 return_tensors="pt",
             )
             negative_prompt_attention_mask = uncond_input.attention_mask
-            negative_prompt_attention_mask = negative_prompt_attention_mask.to(device)
+            negative_prompt_attention_mask = negative_prompt_attention_mask.to(
+                text_enc_device
+            )
 
             negative_prompt_embeds = self.text_encoder(
-                uncond_input.input_ids.to(device),
+                uncond_input.input_ids.to(text_enc_device),
                 attention_mask=negative_prompt_attention_mask,
             )
             negative_prompt_embeds = negative_prompt_embeds[0]
@@ -973,6 +659,26 @@ class LTXVideoPipeline(DiffusionPipeline):
 
         return caption.strip()
 
+    def image_cond_noise_update(
+        self,
+        t,
+        init_latents,
+        latents,
+        noise_scale,
+        conditiong_mask,
+        generator,
+    ):
+        noise = randn_tensor(
+            latents.shape,
+            generator=generator,
+            device=latents.device,
+            dtype=latents.dtype,
+        )
+        latents = (init_latents + noise_scale * noise * (t**2)) * conditiong_mask[
+            ..., None
+        ] + latents * (1 - conditiong_mask[..., None])
+        return latents
+
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.prepare_latents
     def prepare_latents(
         self,
@@ -999,10 +705,12 @@ class LTXVideoPipeline(DiffusionPipeline):
 
         if latents is None:
             latents = randn_tensor(
-                shape, generator=generator, device=device, dtype=dtype
+                shape, generator=generator, device=generator.device, dtype=dtype
             )
         elif latents_mask is not None:
-            noise = randn_tensor(shape, generator=generator, device=device, dtype=dtype)
+            noise = randn_tensor(
+                shape, generator=generator, device=generator.device, dtype=dtype
+            )
             latents = latents * latents_mask[..., None] + noise * (
                 1 - latents_mask[..., None]
             )
@@ -1054,47 +762,6 @@ class LTXVideoPipeline(DiffusionPipeline):
 
         return samples
 
-    def extract_layers(self, file_path="./unet_info.txt"):
-        """
-        Extract down, mid, and up layers from the UNet model and save to a file.
-
-        Args:
-            temporal (bool): Whether to extract temporal layers or not.
-            file_path (str): The file path to save layer information.
-        
-        Returns:
-            Tuple: (down_layers, mid_layers, up_layers)
-        """
-        layers = []
-        with open(file_path, "w") as f:
-            for name, module in self.transformer.named_modules():
-                if "attn1" in name and "to" not in name and "norm" not in name:
-                    f.write(f"{name}\n")
-                    layer_type = name.split(".")[0].split("_")[0]
-                    layers.append((name, module))
-
-        return layers
-
-    def replace_layer_processor(self, layers, stg_block_idx, replace_processor, initialize=False,):
-        """
-        Replace the processor for specified layers in the network.
-
-        Args:
-            layers (list): A list of tuples where each tuple contains (name, module) of the layer.
-            stg_block_idx (list): A list of indices specifying which layers to replace.
-            replace_processor (Callable): The processor to replace with.
-        """
-        if initialize:
-            replace_processor = AttnProcessor2_0
-            for l in layers:
-                l[1].processor = replace_processor
-            print(f"[INFO] All layers are initialized with {replace_processor}")
-        else:
-            for bidx in stg_block_idx:
-                layers[bidx][1].processor = replace_processor
-            print(f"[INFO] Layers are replaced with {replace_processor}")
-        return
-
     @torch.no_grad()
     def __call__(
         self,
@@ -1107,9 +774,9 @@ class LTXVideoPipeline(DiffusionPipeline):
         num_inference_steps: int = 20,
         timesteps: List[int] = None,
         guidance_scale: float = 4.5,
-        stg_mode: str = "stg-a",
-        stg_scale: float = 0.0,
-        stg_block_idx: list = [19],
+        skip_layer_strategy: Optional[SkipLayerStrategy] = None,
+        skip_block_list: List[int] = None,
+        stg_scale: float = 1.0,
         do_rescaling: bool = True,
         rescaling_scale: float = 0.7,
         num_images_per_prompt: Optional[int] = 1,
@@ -1125,7 +792,10 @@ class LTXVideoPipeline(DiffusionPipeline):
         callback_on_step_end: Optional[Callable[[int, int, Dict], None]] = None,
         clean_caption: bool = True,
         media_items: Optional[torch.FloatTensor] = None,
+        decode_timestep: Union[List[float], float] = 0.0,
+        decode_noise_scale: Optional[List[float]] = None,
         mixed_precision: bool = False,
+        offload_to_cpu: bool = False,
         **kwargs,
     ) -> Union[ImagePipelineOutput, Tuple]:
         """
@@ -1232,21 +902,23 @@ class LTXVideoPipeline(DiffusionPipeline):
         # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
         # corresponds to doing no classifier free guidance.
         do_classifier_free_guidance = guidance_scale > 1.0
-
         do_spatio_temporal_guidance = stg_scale > 0.0
+
+        num_conds = 1
+        if do_classifier_free_guidance:
+            num_conds += 1
         if do_spatio_temporal_guidance:
-            layers = self.extract_layers()
-            if stg_mode == "stg-r":
-                replace_processor = STGResidualProcessor()
-            elif stg_mode == "stg-a":
-                replace_processor = STGAttentionProcessor()
-            else:
-                assert False, "Invalid stg mode"
-            self.replace_layer_processor(layers, 
-                                        stg_block_idx,
-                                        replace_processor)
+            num_conds += 1
+
+        skip_layer_mask = None
+        if do_spatio_temporal_guidance:
+            skip_layer_mask = self.transformer.create_skip_layer_mask(
+                skip_block_list, batch_size, num_conds, 2
+            )
 
         # 3. Encode input prompt
+        self.text_encoder = self.text_encoder.to(self._execution_device)
+
         (
             prompt_embeds,
             prompt_attention_mask,
@@ -1264,21 +936,36 @@ class LTXVideoPipeline(DiffusionPipeline):
             negative_prompt_attention_mask=negative_prompt_attention_mask,
             clean_caption=clean_caption,
         )
-        if do_classifier_free_guidance and not do_spatio_temporal_guidance:
-            prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
-            prompt_attention_mask = torch.cat(
+
+        if offload_to_cpu:
+            self.text_encoder = self.text_encoder.cpu()
+
+        self.transformer = self.transformer.to(self._execution_device)
+
+        prompt_embeds_batch = prompt_embeds
+        prompt_attention_mask_batch = prompt_attention_mask
+        if do_classifier_free_guidance:
+            prompt_embeds_batch = torch.cat(
+                [negative_prompt_embeds, prompt_embeds], dim=0
+            )
+            prompt_attention_mask_batch = torch.cat(
                 [negative_prompt_attention_mask, prompt_attention_mask], dim=0
             )
-        elif do_spatio_temporal_guidance:
-            prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds, prompt_embeds], dim=0)
-            prompt_attention_mask = torch.cat(
-                [negative_prompt_attention_mask, prompt_attention_mask, prompt_attention_mask], dim=0
+        if do_spatio_temporal_guidance:
+            prompt_embeds_batch = torch.cat([prompt_embeds_batch, prompt_embeds], dim=0)
+            prompt_attention_mask_batch = torch.cat(
+                [
+                    prompt_attention_mask_batch,
+                    prompt_attention_mask,
+                ],
+                dim=0,
             )
 
         # 3b. Encode and prepare conditioning data
         self.video_scale_factor = self.video_scale_factor if is_video else 1
         conditioning_method = kwargs.get("conditioning_method", None)
         vae_per_channel_normalize = kwargs.get("vae_per_channel_normalize", False)
+        image_cond_noise_scale = kwargs.get("image_cond_noise_scale", 0.0)
         init_latents, conditioning_mask = self.prepare_conditioning(
             media_items,
             num_frames,
@@ -1300,20 +987,22 @@ class LTXVideoPipeline(DiffusionPipeline):
             batch_size=batch_size * num_images_per_prompt,
             num_latent_channels=self.transformer.config.in_channels,
             num_patches=num_latent_patches,
-            dtype=prompt_embeds.dtype,
+            dtype=prompt_embeds_batch.dtype,
             device=device,
             generator=generator,
             latents=init_latents,
             latents_mask=conditioning_mask,
         )
+
+        if torch.backends.mps.is_available():
+            latents = latents.to("mps")
+        
+        orig_conditiong_mask = conditioning_mask
         if conditioning_mask is not None and is_video:
             assert num_images_per_prompt == 1
             conditioning_mask = (
-                torch.cat([conditioning_mask] * 2)
-                if do_classifier_free_guidance and not do_spatio_temporal_guidance
-                else
-                torch.cat([conditioning_mask] * 3)
-                if do_spatio_temporal_guidance
+                torch.cat([conditioning_mask] * num_conds)
+                if num_conds > 1
                 else conditioning_mask
             )
 
@@ -1339,11 +1028,19 @@ class LTXVideoPipeline(DiffusionPipeline):
 
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
-                if do_classifier_free_guidance and not do_spatio_temporal_guidance:
-                    latent_model_input = torch.cat([latents] * 2) 
-                elif do_spatio_temporal_guidance:
-                    latent_model_input = torch.cat([latents] * 3) 
+                if conditioning_method == ConditioningMethod.FIRST_FRAME:
+                    latents = self.image_cond_noise_update(
+                        t,
+                        init_latents,
+                        latents,
+                        image_cond_noise_scale,
+                        orig_conditiong_mask,
+                        generator,
+                    )
 
+                latent_model_input = (
+                    torch.cat([latents] * num_conds) if num_conds > 1 else latents
+                )
                 latent_model_input = self.scheduler.scale_model_input(
                     latent_model_input, t
                 )
@@ -1413,32 +1110,36 @@ class LTXVideoPipeline(DiffusionPipeline):
                     noise_pred = self.transformer(
                         latent_model_input.to(self.transformer.dtype),
                         indices_grid,
-                        encoder_hidden_states=prompt_embeds.to(self.transformer.dtype),
-                        encoder_attention_mask=prompt_attention_mask,
+                        encoder_hidden_states=prompt_embeds_batch.to(
+                            self.transformer.dtype
+                        ),
+                        encoder_attention_mask=prompt_attention_mask_batch,
                         timestep=current_timestep,
+                        skip_layer_mask=skip_layer_mask,
+                        skip_layer_strategy=skip_layer_strategy,
                         return_dict=False,
                     )[0]
 
                 # perform guidance
-                if do_classifier_free_guidance and not do_spatio_temporal_guidance:
-                    noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+                if do_spatio_temporal_guidance:
+                    noise_pred_text_perturb = noise_pred[-1:]
+                if do_classifier_free_guidance:
+                    noise_pred_uncond, noise_pred_text = noise_pred[:2].chunk(2)
                     noise_pred = noise_pred_uncond + guidance_scale * (
                         noise_pred_text - noise_pred_uncond
                     )
-                    current_timestep, _ = current_timestep.chunk(2)
-                elif do_spatio_temporal_guidance:
-                    noise_pred_uncond, noise_pred_text, noise_pred_text_perturb = noise_pred.chunk(3)                        
-
-                    noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond) \
-                                                    + stg_scale * (noise_pred_text - noise_pred_text_perturb)
-                    
+                if do_spatio_temporal_guidance:
+                    noise_pred = noise_pred + stg_scale * (
+                        noise_pred_text - noise_pred_text_perturb
+                    )
                     if do_rescaling:
                         factor = noise_pred_text.std() / noise_pred.std()
                         factor = rescaling_scale * factor + (1 - rescaling_scale)
                         noise_pred = noise_pred * factor
-                    
-                    current_timestep, _, _ = current_timestep.chunk(3)
 
+                current_timestep = current_timestep[:1]
+                if torch.backends.mps.is_available():
+                    current_timestep = current_timestep.to("mps")
                 # learned sigma
                 if (
                     self.transformer.config.out_channels // 2
@@ -1464,6 +1165,11 @@ class LTXVideoPipeline(DiffusionPipeline):
                 if callback_on_step_end is not None:
                     callback_on_step_end(self, i, t, {})
 
+        if offload_to_cpu:
+            self.transformer = self.transformer.cpu()
+            if self._execution_device == "cuda":
+                torch.cuda.empty_cache()
+
         latents = self.patchifier.unpatchify(
             latents=latents,
             output_height=latent_height,
@@ -1473,11 +1179,30 @@ class LTXVideoPipeline(DiffusionPipeline):
             // math.prod(self.patchifier.patch_size),
         )
         if output_type != "latent":
+            if self.vae.decoder.timestep_conditioning:
+                noise = torch.randn_like(latents)
+                if not isinstance(decode_timestep, list):
+                    decode_timestep = [decode_timestep] * latents.shape[0]
+                if decode_noise_scale is None:
+                    decode_noise_scale = decode_timestep
+                elif not isinstance(decode_noise_scale, list):
+                    decode_noise_scale = [decode_noise_scale] * latents.shape[0]
+
+                decode_timestep = torch.tensor(decode_timestep).to(latents.device)
+                decode_noise_scale = torch.tensor(decode_noise_scale).to(
+                    latents.device
+                )[:, None, None, None, None]
+                latents = (
+                    latents * (1 - decode_noise_scale) + noise * decode_noise_scale
+                )
+            else:
+                decode_timestep = None
             image = vae_decode(
                 latents,
                 self.vae,
                 is_video,
                 vae_per_channel_normalize=kwargs["vae_per_channel_normalize"],
+                timestep=decode_timestep,
             )
             image = self.image_processor.postprocess(image, output_type=output_type)
 

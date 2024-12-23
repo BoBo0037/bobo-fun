@@ -11,10 +11,10 @@ from torch.nn import functional
 
 from diffusers.utils import logging
 
-from ...utils.torch_utils import Identity
-from .conv_nd_factory import make_conv_nd, make_linear_nd
-from .pixel_norm import PixelNorm
-from .vae import AutoencoderKLWrapper
+from src.ltx_video.utils.torch_utils import Identity
+from src.ltx_video.models.autoencoders.conv_nd_factory import make_conv_nd, make_linear_nd
+from src.ltx_video.models.autoencoders.pixel_norm import PixelNorm
+from src.ltx_video.models.autoencoders.vae import AutoencoderKLWrapper
 
 logger = logging.get_logger(__name__)
 

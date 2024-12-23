@@ -1,29 +1,24 @@
 import gc
-import json
 import os
 import random
 from datetime import datetime
 from pathlib import Path
 from diffusers.utils import logging
+from transformers import T5EncoderModel, T5Tokenizer
 from typing import Optional
-
 import imageio
 import numpy as np
-import safetensors.torch
 import torch
 import torch.nn.functional as F
 from PIL import Image
 from transformers import T5EncoderModel, T5Tokenizer
-
-from .ltx_video.models.autoencoders.causal_video_autoencoder import (
-    CausalVideoAutoencoder,
-)
-from .ltx_video.models.transformers.symmetric_patchifier import SymmetricPatchifier
-from .ltx_video.models.transformers.transformer3d import Transformer3DModel
-from .ltx_video.pipelines.pipeline_ltx_video import LTXVideoPipeline
-from .ltx_video.schedulers.rf import RectifiedFlowScheduler
-from .ltx_video.utils.conditioning_method import ConditioningMethod
-
+from src.ltx_video.models.autoencoders.causal_video_autoencoder import (CausalVideoAutoencoder)
+from src.ltx_video.models.transformers.symmetric_patchifier import SymmetricPatchifier
+from src.ltx_video.models.transformers.transformer3d import Transformer3DModel
+from src.ltx_video.pipelines.pipeline_ltx_video import LTXVideoPipeline
+from src.ltx_video.schedulers.rf import RectifiedFlowScheduler
+from src.ltx_video.utils.conditioning_method import ConditioningMethod
+from src.ltx_video.utils.skip_layer_strategy import SkipLayerStrategy
 from huggingface_hub import snapshot_download
 
 MAX_HEIGHT = 720
@@ -36,9 +31,8 @@ class LTXVideoManager():
     def __init__(self, device : torch.device, dtype : torch.dtype):
         self.device : torch.device = device
         self.dtype: torch.dtype = dtype
-        self.model : str = "Lightricks/LTX-Video"
-        self.model_sub: str = "PixArt-alpha/PixArt-XL-2-1024-MS"
-        self.ckpt_dir : str = os.path.expanduser("~/.cache/huggingface/hub/models--Lightricks--LTX-Video/")
+        self.model_id : str = "Lightricks/LTX-Video"
+        self.ckpt_path : str = os.path.expanduser("~/.cache/huggingface/hub/models--Lightricks--LTX-Video")
         self.prompt : str = "The camera follows behind a white vintage SUV with a black roof rack as it speeds up a steep dirt road surrounded by pine trees on a steep mountain slope, dust kicks up from it’s tires, the sunlight shines on the SUV as it speeds along the dirt road, casting a warm glow over the scene. The dirt road curves gently into the distance, with no other cars or vehicles in sight. The trees on either side of the road are redwoods, with patches of greenery scattered throughout. The car is seen from the rear following the curve with ease, making it seem as if it is on a rugged drive through the rugged terrain. The dirt road itself is surrounded by steep hills and mountains, with a clear blue sky above with wispy clouds."
         self.negative_prompt : str = "worst quality, inconsistent motion, blurry, jittery, distorted"
         self.output_path : str = None
@@ -51,17 +45,29 @@ class LTXVideoManager():
         self.guidance_scale: float = 3.2
         self.num_images_per_prompt : int = 1
         self.num_inference_steps: int = 40
+        self.offload_to_cpu = False
         self.seed : int = None
-        # stg settings
-        self.stg_mode : str = "stg-a"       # Choose between 'stg-a' or 'stg-r'
-        self.stg_scale : float = 0.0        # Recommended values are ≤2.0 (stg_scale = 0.0 means do not using stg)
-        self.stg_block_idx : list = [19, 20]    # Specify the block index for applying STG
-        self.do_rescaling : bool = False     # Set to True to enable rescaling
+        self.image_cond_noise_scale = 0.15
+        self.decode_timestep = 0.05
+        self.decode_noise_scale = 0.025
+        self.precision = "bfloat16"
+        self.stg_mode = "stg_a"
+        self.stg_scale = 1
+        self.stg_rescale = 0.7
+        self.stg_skip_layers = "19"
 
     def cleanup(self):
         print("Run cleanup")
         gc.collect()
         torch.mps.empty_cache()
+
+    def check_models(self):
+        print("Check and download model")
+        snapshot_download(repo_id=self.model_id, 
+                          local_dir=self.ckpt_path,
+                          repo_type='model', 
+                          ignore_patterns=["ltx-video-2b-v0.9.safetensors", "ltx-video-2b-v0.9.1.safetensors", "media/*"])
+        print("Finish prepare model")
 
     def setup(self):
         # seed
@@ -70,24 +76,16 @@ class LTXVideoManager():
         seed_everething(self.seed)
         print(f"Using seed: {self.seed}")
 
+        # cpu offload
+        self.offload_to_cpu = False if not self.offload_to_cpu else get_total_gpu_memory() < 30
+
         # output path
         self.output_dir = (
             Path(self.output_path)
             if self.output_path
-            else Path(f"output_ltx_video/{datetime.today().strftime('%Y-%m-%d')}")
+            else Path(f"outputs/{datetime.today().strftime('%Y-%m-%d')}")
         )
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Output direction: {self.output_dir}")
-
-        # check model
-        print("Check and download model")
-        snapshot_download(repo_id=self.model, 
-                          local_dir=self.ckpt_dir,
-                          repo_type='model', 
-                          ignore_patterns=["ltx-video-2b-v0.9.safetensors", "media/*"])
-        text_encoder = T5EncoderModel.from_pretrained(self.model_sub, torch_dtype=self.dtype, subfolder="text_encoder").to(self.device)
-        tokenizer = T5Tokenizer.from_pretrained(self.model_sub, torch_dtype=self.dtype, subfolder="tokenizer")
-        print("Finish prepare model")
 
         # Load image
         if self.input_image_path:
@@ -102,15 +100,20 @@ class LTXVideoManager():
         num_frames = self.num_frames
 
         if height > MAX_HEIGHT or width > MAX_WIDTH or num_frames > MAX_NUM_FRAMES:
-            logger.warning(f"Input resolution or number of frames {height}x{width}x{num_frames} is too big, it is suggested to use the resolution below {MAX_HEIGHT}x{MAX_WIDTH}x{MAX_NUM_FRAMES}.")
+            logger.warning(
+                f"Input resolution or number of frames {height}x{width}x{num_frames} is too big, it is suggested to use the resolution below {MAX_HEIGHT}x{MAX_WIDTH}x{MAX_NUM_FRAMES}."
+            )
 
         # Adjust dimensions to be divisible by 32 and num_frames to be (N * 8 + 1)
         self.height_padded = ((height - 1) // 32 + 1) * 32
         self.width_padded = ((width - 1) // 32 + 1) * 32
         self.num_frames_padded = ((num_frames - 2) // 8 + 1) * 8 + 1
-        logger.warning(f"Padded dimensions: {self.height_padded}x{self.width_padded}x{self.num_frames_padded}")
 
         self.padding = calculate_padding(height, width, self.height_padded, self.width_padded)
+
+        logger.warning(
+            f"Padded dimensions: {self.height_padded}x{self.width_padded}x{self.num_frames_padded}"
+        )
 
         if self.media_items_prepad is not None:
             self.media_items = F.pad(
@@ -118,6 +121,14 @@ class LTXVideoManager():
             )  # -1 is the value for padding since the image is normalized to -1, 1
         else:
             self.media_items = None
+        
+        # Set spatiotemporal guidance
+        self.skip_block_list = [int(x.strip()) for x in self.stg_skip_layers.split(",")]
+        self.skip_layer_strategy = (
+            SkipLayerStrategy.Attention
+            if self.stg_mode.lower() == "stg_a"
+            else SkipLayerStrategy.Residual
+        )
 
         # Prepare input for the pipeline
         self.sample = {
@@ -128,41 +139,54 @@ class LTXVideoManager():
             "media_items": self.media_items,
         }
 
-        # Paths for the separate mode directories
-        ckpt_dir = Path(self.ckpt_dir)
-        unet_dir = ckpt_dir / "unet"
-        vae_dir = ckpt_dir / "vae"
-        scheduler_dir = ckpt_dir / "scheduler"
-
-        # Load models
-        vae = load_vae(vae_dir)
-        unet = load_unet(unet_dir).to(self.device)
-        scheduler = load_scheduler(scheduler_dir)
+        ckpt_path = Path(self.ckpt_path)
+        vae = CausalVideoAutoencoder.from_pretrained(ckpt_path)
+        transformer = Transformer3DModel.from_pretrained(ckpt_path)
+        scheduler = RectifiedFlowScheduler.from_pretrained(ckpt_path)
+        text_encoder = T5EncoderModel.from_pretrained("PixArt-alpha/PixArt-XL-2-1024-MS", subfolder="text_encoder")
+        tokenizer = T5Tokenizer.from_pretrained("PixArt-alpha/PixArt-XL-2-1024-MS", subfolder="tokenizer")
         patchifier = SymmetricPatchifier(patch_size=1)
+
+        if torch.backends.mps.is_available():
+            transformer = transformer.to(self.device)
+            vae = vae.to(self.device)
+            text_encoder = text_encoder.to(self.device)
+        elif torch.cuda.is_available():
+            transformer = transformer.cuda()
+            vae = vae.cuda()
+            text_encoder = text_encoder.cuda()
+
+        vae = vae.to(torch.bfloat16)
+        text_encoder = text_encoder.to(torch.bfloat16)
+        if self.precision == "bfloat16" and transformer.dtype != torch.bfloat16:
+            transformer = transformer.to(torch.bfloat16)
 
         # Use submodels for the pipeline
         submodel_dict = {
-            "transformer": unet,
-            "patchifier": patchifier,
+            "vae": vae,
+            "transformer": transformer,
             "text_encoder": text_encoder,
             "tokenizer": tokenizer,
             "scheduler": scheduler,
-            "vae": vae,
+            "patchifier": patchifier,
         }
-        self.pipeline = LTXVideoPipeline(**submodel_dict).to(self.device)
-        self.generator=torch.Generator().manual_seed(self.seed)
+
+        self.pipe = LTXVideoPipeline(**submodel_dict).to(self.device)
+        self.generator = torch.Generator().manual_seed(self.seed)
 
     @torch.inference_mode()
     def generate(self):
         print("Start generate video")
-        images = self.pipeline(
+        images = self.pipe(
             num_inference_steps=self.num_inference_steps,
             num_images_per_prompt=self.num_images_per_prompt,
             guidance_scale=self.guidance_scale,
-            generator=self.generator,
-            stg_mode=self.stg_mode,
+            skip_layer_strategy=self.skip_layer_strategy,
+            skip_block_list=self.skip_block_list,
             stg_scale=self.stg_scale,
-            stg_block_idx=self.stg_block_idx,
+            do_rescaling=self.stg_rescale != 1,
+            rescaling_scale=self.stg_rescale,
+            generator=self.generator,
             output_type="pt",
             callback_on_step_end=None,
             height=self.height_padded,
@@ -172,12 +196,16 @@ class LTXVideoManager():
             **self.sample,
             is_video=True,
             vae_per_channel_normalize=True,
-            conditioning_method=(
-                ConditioningMethod.FIRST_FRAME
-                if self.media_items is not None
-                else ConditioningMethod.UNCONDITIONAL
-            ),
-            mixed_precision=False,
+             conditioning_method=(
+                 ConditioningMethod.FIRST_FRAME
+                 if self.media_items is not None
+                 else ConditioningMethod.UNCONDITIONAL
+             ),
+            image_cond_noise_scale=self.image_cond_noise_scale,
+            decode_timestep=self.decode_timestep,
+            decode_noise_scale=self.decode_noise_scale,
+            mixed_precision=(self.precision == "mixed_precision"),
+            offload_to_cpu=self.offload_to_cpu,
         ).images
 
         # Crop the padded images to the desired resolution and number of frames
@@ -220,10 +248,6 @@ class LTXVideoManager():
                     seed=self.seed,
                     resolution=(height, width, self.num_frames),
                     dir=self.output_dir,
-                    stg_mode=self.stg_mode,
-                    stg_scale=self.stg_scale,
-                    stg_block_idx=self.stg_block_idx,
-                    do_rescaling=self.do_rescaling,
                 )
 
                 # Write video
@@ -270,7 +294,7 @@ class LTXVideoManager():
     def set_input_video(self, input_video_path : str) -> None:
         self.input_video_path = input_video_path
         print(f"Set input video to '{self.input_video_path}'")
-    
+
     def set_output_layout(self, 
                           output_path : Optional[str] = None, 
                           width : Optional[int] = 704, 
@@ -290,49 +314,24 @@ class LTXVideoManager():
         print(f"Set num of inference steps to '{self.num_inference_steps}'")
 
     def set_stg(self,
-                stg_mode : str = "stg-r",
-                stg_scale : float = 0.0,
-                stg_block_idx : list = [19],
-                do_rescaling : bool = True) -> None:
-        self.stg_mode = stg_mode
-        self.stg_scale = stg_scale
-        self.stg_block_idx = stg_block_idx
-        self.do_rescaling = do_rescaling
-        print(f"Set stg mode to '{self.stg_mode}'")
-        print(f"Set stg scale to '{self.stg_scale}'")
-        print(f"Set stg block idx to '{self.stg_block_idx}'")
-        print(f"Set stg do rescaling to '{self.do_rescaling}'")
+                    stg_mode : str = "stg-r",
+                    stg_scale : float = 1,
+                    stg_rescale : float = 0.7, 
+                    stg_skip_layers : str = "19") -> None:
+            self.stg_mode = stg_mode
+            self.stg_scale = stg_scale
+            self.stg_rescale = stg_rescale
+            self.stg_skip_layers = stg_skip_layers
+            print(f"Set stg mode to '{self.stg_mode}'")
+            print(f"Set stg scale to '{self.stg_scale}'")
+            print(f"Set stg rescale to '{self.stg_rescale}'")
+            print(f"Set stg skip layers to '{self.stg_skip_layers}'")
 
-def load_vae(vae_dir):
-    vae_ckpt_path = vae_dir / "vae_diffusion_pytorch_model.safetensors"
-    vae_config_path = vae_dir / "config.json"
-    with open(vae_config_path, "r") as f:
-        vae_config = json.load(f)
-    vae = CausalVideoAutoencoder.from_config(vae_config)
-    vae_state_dict = safetensors.torch.load_file(vae_ckpt_path)
-    vae.load_state_dict(vae_state_dict)
+def get_total_gpu_memory():
     if torch.cuda.is_available():
-        vae = vae.cuda()
-    return vae.to(torch.bfloat16)
-
-
-def load_unet(unet_dir):
-    unet_ckpt_path = unet_dir / "unet_diffusion_pytorch_model.safetensors"
-    unet_config_path = unet_dir / "config.json"
-    transformer_config = Transformer3DModel.load_config(unet_config_path)
-    transformer = Transformer3DModel.from_config(transformer_config)
-    unet_state_dict = safetensors.torch.load_file(unet_ckpt_path)
-    transformer.load_state_dict(unet_state_dict, strict=True)
-    if torch.cuda.is_available():
-        transformer = transformer.cuda()
-    return transformer
-
-
-def load_scheduler(scheduler_dir):
-    scheduler_config_path = scheduler_dir / "scheduler_config.json"
-    scheduler_config = RectifiedFlowScheduler.load_config(scheduler_config_path)
-    return RectifiedFlowScheduler.from_config(scheduler_config)
-
+        total_memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        return total_memory
+    return None
 
 def load_image_to_tensor_with_resize_and_crop(
     image_path, target_height=512, target_width=768
@@ -359,7 +358,6 @@ def load_image_to_tensor_with_resize_and_crop(
     # Create 5D tensor: (batch_size=1, channels=3, num_frames=1, height, width)
     return frame_tensor.unsqueeze(0).unsqueeze(2)
 
-
 def calculate_padding(
     source_height: int, source_width: int, target_height: int, target_width: int
 ) -> tuple[int, int, int, int]:
@@ -378,7 +376,6 @@ def calculate_padding(
     # Padding format is (left, right, top, bottom)
     padding = (pad_left, pad_right, pad_top, pad_bottom)
     return padding
-
 
 def convert_prompt_to_filename(text: str, max_len: int = 20) -> str:
     # Remove non-letters and convert to lowercase
@@ -415,20 +412,8 @@ def get_unique_filename(
     dir: Path,
     endswith=None,
     index_range=1000,
-    stg_mode: str = "stg-a",
-    stg_scale: float = 0.0,
-    stg_block_idx: list = [19],
-    do_rescaling: bool = True,
 ) -> Path:
-    mode = "CFG" if stg_scale == 0 else stg_mode.upper()
-    if mode == "CFG":
-        suffix = f"{mode}"
-    else:
-        suffix = f"{mode}_{stg_scale}_{stg_block_idx}"
-    if do_rescaling:
-        suffix = f"{suffix}_rescaled"
-
-    base_filename = f"{base}_{convert_prompt_to_filename(prompt, max_len=30)}_{seed}_{resolution[0]}x{resolution[1]}x{resolution[2]}_{suffix}"
+    base_filename = f"{base}_{convert_prompt_to_filename(prompt, max_len=30)}_{seed}_{resolution[0]}x{resolution[1]}x{resolution[2]}"
     for i in range(index_range):
         filename = dir / f"{base_filename}_{i}{endswith if endswith else ''}{ext}"
         if not os.path.exists(filename):
@@ -436,7 +421,6 @@ def get_unique_filename(
     raise FileExistsError(
         f"Could not find a unique filename after {index_range} attempts."
     )
-
 
 def seed_everething(seed: int):
     random.seed(seed)

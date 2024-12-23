@@ -6,7 +6,8 @@ from diffusers.configuration_utils import ConfigMixin
 from einops import rearrange
 from torch import Tensor
 
-from ...utils.torch_utils import append_dims
+from src.ltx_video.utils.torch_utils import append_dims
+
 
 class Patchifier(ConfigMixin, ABC):
     def __init__(self, patch_size: int):

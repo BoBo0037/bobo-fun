@@ -9,9 +9,12 @@ ltx = LTXVideoManager(device, torch.bfloat16)
 
 # set params
 ltx.set_prompt(
-    prompt=PromptManager("prompts.json").get("suv"),
+    prompt=PromptManager("prompts.json").get("white-jeep"),
     negative_prompt=PromptManager("prompts.json").get("negative-video")
 )
+
+# If run 'image' to video
+#ltx.set_input_image("assets/imgs/suv.png")
 
 # refer settings can make a video on Mac: 
 # [768, 512], fps=24, num_frames = 121, around 5 seconds video
@@ -19,19 +22,20 @@ ltx.set_prompt(
 ltx.set_output_layout(
     width=768, 
     height=512, 
-    frame_rate=24, 
-    num_frames=121, 
+    frame_rate=8, 
+    num_frames=17, 
     num_inference_steps=50
 )
 
 ltx.set_stg(
     stg_mode="stg-a",   # Choose between 'stg-a' or 'stg-r'
-    stg_scale=0,      # Recommended values are ≤2.0, (stg_scale = 0.0 means do not using stg)
-    stg_block_idx=[],   # Specify the block index for applying STG
-    do_rescaling=True  # Set to True to enable rescaling
+    stg_scale=1.25,      # Recommended values are ≤2.0, (stg_scale = 0.0 means do not using stg)
+    stg_rescale=0.7,    # rescaling
+    stg_skip_layers="19"  # Specify the block index for applying STG
 )
 
-#ltx.set_input_image("assets/imgs/suv.png")
+# check models
+ltx.check_models()
 
 # setup
 ltx.setup()
