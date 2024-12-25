@@ -173,10 +173,16 @@ class Inference(object):
                 ring_degree=args.ring_degree,
                 ulysses_degree=args.ulysses_degree,
             )
-            device = torch.device(f"cuda:{os.environ['LOCAL_RANK']}")
+            if torch.backends.mps.is_available():
+                device = "mps"
+            else:
+                device = torch.device(f"cuda:{os.environ['LOCAL_RANK']}")
         else:
             if device is None:
-                device = "cuda" if torch.cuda.is_available() else "cpu"
+                if torch.backends.mps.is_available():
+                    device = "mps"
+                else:
+                    device = "cuda" if torch.cuda.is_available() else "cpu"
 
         parallel_args = {"ulysses_degree": args.ulysses_degree, "ring_degree": args.ring_degree}
 
