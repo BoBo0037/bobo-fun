@@ -11,7 +11,7 @@ from diffusers.configuration_utils import ConfigMixin, register_to_config
 from .activation_layers import get_activation_layer
 from .norm_layers import get_norm_layer
 from .embed_layers import TimestepEmbedder, PatchEmbed, TextProjection
-from .attenion import attention, get_cu_seqlens
+from .attenion import attention, parallel_attention, get_cu_seqlens
 from .posemb_layers import apply_rotary_emb
 from .mlp_layers import MLP, MLPEmbedder, FinalLayer
 from .modulate_layers import ModulateDiT, modulate, apply_gate
@@ -121,6 +121,7 @@ class MMDoubleStreamBlock(nn.Module):
             bias=True,
             **factory_kwargs,
         )
+        self.hybrid_seq_parallel_attn = None
 
     def enable_deterministic(self):
         self.deterministic = True
@@ -197,17 +198,33 @@ class MMDoubleStreamBlock(nn.Module):
         assert (
             cu_seqlens_q.shape[0] == 2 * img.shape[0] + 1
         ), f"cu_seqlens_q.shape:{cu_seqlens_q.shape}, img.shape[0]:{img.shape[0]}"
-        attn = attention(
-            q,
-            k,
-            v,
-            cu_seqlens_q=cu_seqlens_q,
-            cu_seqlens_kv=cu_seqlens_kv,
-            max_seqlen_q=max_seqlen_q,
-            max_seqlen_kv=max_seqlen_kv,
-            batch_size=img_k.shape[0],
-            mode= "torch" if torch.backends.mps.is_available() else "flash"
-        )
+        
+        # attention computation start
+        if not self.hybrid_seq_parallel_attn:
+            attn = attention(
+                q,
+                k,
+                v,
+                cu_seqlens_q=cu_seqlens_q,
+                cu_seqlens_kv=cu_seqlens_kv,
+                max_seqlen_q=max_seqlen_q,
+                max_seqlen_kv=max_seqlen_kv,
+                batch_size=img_k.shape[0],
+                mode= "torch" if torch.backends.mps.is_available() else "flash"
+            )
+        else:
+            attn = parallel_attention(
+                self.hybrid_seq_parallel_attn,
+                q,
+                k,
+                v,
+                img_q_len=img_q.shape[1],
+                img_kv_len=img_k.shape[1],
+                cu_seqlens_q=cu_seqlens_q,
+                cu_seqlens_kv=cu_seqlens_kv
+            )
+            
+        # attention computation end
 
         img_attn, txt_attn = attn[:, : img.shape[1]], attn[:, img.shape[1] :]
 
@@ -299,6 +316,7 @@ class MMSingleStreamBlock(nn.Module):
             act_layer=get_activation_layer("silu"),
             **factory_kwargs,
         )
+        self.hybrid_seq_parallel_attn = None
 
     def enable_deterministic(self):
         self.deterministic = True
@@ -345,17 +363,32 @@ class MMSingleStreamBlock(nn.Module):
         assert (
             cu_seqlens_q.shape[0] == 2 * x.shape[0] + 1
         ), f"cu_seqlens_q.shape:{cu_seqlens_q.shape}, x.shape[0]:{x.shape[0]}"
-        attn = attention(
-            q,
-            k,
-            v,
-            cu_seqlens_q=cu_seqlens_q,
-            cu_seqlens_kv=cu_seqlens_kv,
-            max_seqlen_q=max_seqlen_q,
-            max_seqlen_kv=max_seqlen_kv,
-            batch_size=x.shape[0],
-            mode= "torch" if torch.backends.mps.is_available() else "flash"
-        )
+        
+        # attention computation start
+        if not self.hybrid_seq_parallel_attn:
+            attn = attention(
+                q,
+                k,
+                v,
+                cu_seqlens_q=cu_seqlens_q,
+                cu_seqlens_kv=cu_seqlens_kv,
+                max_seqlen_q=max_seqlen_q,
+                max_seqlen_kv=max_seqlen_kv,
+                batch_size=x.shape[0],
+                mode= "torch" if torch.backends.mps.is_available() else "flash"
+            )
+        else:
+            attn = parallel_attention(
+                self.hybrid_seq_parallel_attn,
+                q,
+                k,
+                v,
+                img_q_len=img_q.shape[1],
+                img_kv_len=img_k.shape[1],
+                cu_seqlens_q=cu_seqlens_q,
+                cu_seqlens_kv=cu_seqlens_kv
+            )
+        # attention computation end
 
         # Compute activation in mlp stream, cat again and run second linear layer.
         output = self.linear2(torch.cat((attn, self.mlp_act(mlp)), 2))

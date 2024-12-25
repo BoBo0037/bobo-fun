@@ -19,6 +19,7 @@
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 import torch
+import torch.distributed as dist
 import numpy as np
 from dataclasses import dataclass
 from packaging import version
@@ -834,8 +835,11 @@ class HunyuanVideoPipeline(DiffusionPipeline):
         else:
             batch_size = prompt_embeds.shape[0]
 
-        device = self._execution_device
-
+        if torch.backends.mps.is_available():
+            device = self._execution_device
+        else:
+            device = torch.device(f"cuda:{dist.get_rank()}") if dist.is_initialized() else self._execution_device
+        
         # 3. Encode input prompt
         lora_scale = (
             self.cross_attention_kwargs.get("scale", None)

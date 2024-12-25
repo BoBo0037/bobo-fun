@@ -1,19 +1,108 @@
+import os
 import time
 import random
+import functools
+from typing import List, Optional, Tuple, Union
 
 from pathlib import Path
 from loguru import logger
 
 import torch
+import torch.distributed as dist
 from src.hyvideo.constants import PROMPT_TEMPLATE, NEGATIVE_PROMPT, PRECISION_TO_TYPE
 from src.hyvideo.vae import load_vae
 from src.hyvideo.modules import load_model
 from src.hyvideo.text_encoder import TextEncoder
 from src.hyvideo.utils.data_utils import align_to
 from src.hyvideo.modules.posemb_layers import get_nd_rotary_pos_embed
+from src.hyvideo.modules.fp8_optimization import convert_fp8_linear
 from src.hyvideo.diffusion.schedulers import FlowMatchDiscreteScheduler
 from src.hyvideo.diffusion.pipelines import HunyuanVideoPipeline
 
+try:
+    import xfuser
+    from xfuser.core.distributed import (
+        get_sequence_parallel_world_size,
+        get_sequence_parallel_rank,
+        get_sp_group,
+        initialize_model_parallel,
+        init_distributed_environment
+    )
+except:
+    xfuser = None
+    get_sequence_parallel_world_size = None
+    get_sequence_parallel_rank = None
+    get_sp_group = None
+    initialize_model_parallel = None
+    init_distributed_environment = None
+
+
+def parallelize_transformer(pipe):
+    transformer = pipe.transformer
+    original_forward = transformer.forward
+
+    @functools.wraps(transformer.__class__.forward)
+    def new_forward(
+        self,
+        x: torch.Tensor,
+        t: torch.Tensor,  # Should be in range(0, 1000).
+        text_states: torch.Tensor = None,
+        text_mask: torch.Tensor = None,  # Now we don't use it.
+        text_states_2: Optional[torch.Tensor] = None,  # Text embedding for modulation.
+        freqs_cos: Optional[torch.Tensor] = None,
+        freqs_sin: Optional[torch.Tensor] = None,
+        guidance: torch.Tensor = None,  # Guidance for modulation, should be cfg_scale x 1000.
+        return_dict: bool = True,
+    ):
+        if x.shape[-2] // 2 % get_sequence_parallel_world_size() == 0:
+            # try to split x by height
+            split_dim = -2
+        elif x.shape[-1] // 2 % get_sequence_parallel_world_size() == 0:
+            # try to split x by width
+            split_dim = -1
+        else:
+            raise ValueError(f"Cannot split video sequence into ulysses_degree x ring_degree ({get_sequence_parallel_world_size()}) parts evenly")
+
+        # patch sizes for the temporal, height, and width dimensions are 1, 2, and 2.
+        temporal_size, h, w = x.shape[2], x.shape[3] // 2, x.shape[4] // 2
+
+        x = torch.chunk(x, get_sequence_parallel_world_size(),dim=split_dim)[get_sequence_parallel_rank()]
+
+        dim_thw = freqs_cos.shape[-1]
+        freqs_cos = freqs_cos.reshape(temporal_size, h, w, dim_thw)
+        freqs_cos = torch.chunk(freqs_cos, get_sequence_parallel_world_size(),dim=split_dim - 1)[get_sequence_parallel_rank()]
+        freqs_cos = freqs_cos.reshape(-1, dim_thw)
+        dim_thw = freqs_sin.shape[-1]
+        freqs_sin = freqs_sin.reshape(temporal_size, h, w, dim_thw)
+        freqs_sin = torch.chunk(freqs_sin, get_sequence_parallel_world_size(),dim=split_dim - 1)[get_sequence_parallel_rank()]
+        freqs_sin = freqs_sin.reshape(-1, dim_thw)
+        
+        from xfuser.core.long_ctx_attention import xFuserLongContextAttention
+        
+        for block in transformer.double_blocks + transformer.single_blocks:
+            block.hybrid_seq_parallel_attn = xFuserLongContextAttention()
+
+        output = original_forward(
+            x,
+            t,
+            text_states,
+            text_mask,
+            text_states_2,
+            freqs_cos,
+            freqs_sin,
+            guidance,
+            return_dict,
+        )
+
+        return_dict = not isinstance(output, tuple)
+        sample = output["x"]
+        sample = get_sp_group().all_gather(sample, dim=split_dim)
+        output["x"] = sample
+        return output
+
+    new_forward = new_forward.__get__(transformer)
+    transformer.forward = new_forward
+    
 
 class Inference(object):
     def __init__(
@@ -28,6 +117,7 @@ class Inference(object):
         use_cpu_offload=False,
         device=None,
         logger=None,
+        parallel_args=None,
     ):
         self.vae = vae
         self.vae_kwargs = vae_kwargs
@@ -48,6 +138,7 @@ class Inference(object):
         # )
         self.device = "mps"
         self.logger = logger
+        self.parallel_args = parallel_args
 
     @classmethod
     def from_pretrained(cls, pretrained_model_path, args, device=None, **kwargs):
@@ -61,14 +152,37 @@ class Inference(object):
         """
         # ========================================================================
         logger.info(f"Got text-to-video model root path: {pretrained_model_path}")
+        
+        # ==================== Initialize Distributed Environment ================
+        if args.ulysses_degree > 1 or args.ring_degree > 1:
+            assert xfuser is not None, \
+                "Ulysses Attention and Ring Attention requires xfuser package."
+
+            assert args.use_cpu_offload is False, \
+                "Cannot enable use_cpu_offload in the distributed environment."
+
+            dist.init_process_group("nccl")
+
+            assert dist.get_world_size() == args.ring_degree * args.ulysses_degree, \
+                "number of GPUs should be equal to ring_degree * ulysses_degree."
+
+            init_distributed_environment(rank=dist.get_rank(), world_size=dist.get_world_size())
+            
+            initialize_model_parallel(
+                sequence_parallel_degree=dist.get_world_size(),
+                ring_degree=args.ring_degree,
+                ulysses_degree=args.ulysses_degree,
+            )
+            device = torch.device(f"cuda:{os.environ['LOCAL_RANK']}")
+        else:
+            if device is None:
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        parallel_args = {"ulysses_degree": args.ulysses_degree, "ring_degree": args.ring_degree}
 
         # ======================== Get the args path =============================
 
-        # Set device and disable gradient
-        if device is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-        device = "mps"if torch.backends.mps.is_available() else "cpu"
-        print(f"device set to {device}")
+        # Disable gradient
         torch.set_grad_enabled(False)
 
         # =========================== Build main model ===========================
@@ -83,6 +197,8 @@ class Inference(object):
             out_channels=out_channels,
             factor_kwargs=factor_kwargs,
         )
+        if args.use_fp8:
+            convert_fp8_linear(model, args.dit_weight, original_dtype=PRECISION_TO_TYPE[args.precision])
         model = model.to(device)
         model = Inference.load_state_dict(args, model, pretrained_model_path)
         model.eval()
@@ -157,6 +273,7 @@ class Inference(object):
             use_cpu_offload=args.use_cpu_offload,
             device=device,
             logger=logger,
+            parallel_args=parallel_args
         )
 
     @staticmethod
@@ -262,6 +379,7 @@ class HunyuanVideoSampler(Inference):
         use_cpu_offload=False,
         device=0,
         logger=None,
+        parallel_args=None
     ):
         super().__init__(
             args,
@@ -274,6 +392,7 @@ class HunyuanVideoSampler(Inference):
             use_cpu_offload=use_cpu_offload,
             device=device,
             logger=logger,
+            parallel_args=parallel_args
         )
         # ====================================================================================
         # add code
@@ -306,6 +425,8 @@ class HunyuanVideoSampler(Inference):
         )
 
         self.default_negative_prompt = NEGATIVE_PROMPT
+        if self.parallel_args['ulysses_degree'] > 1 or self.parallel_args['ring_degree'] > 1:
+            parallelize_transformer(self.pipeline)
 
     def load_diffusion_pipeline(
         self,

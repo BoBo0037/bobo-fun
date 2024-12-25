@@ -6,9 +6,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 try:
+    import flash_attn
+    from flash_attn.flash_attn_interface import _flash_attn_forward
     from flash_attn.flash_attn_interface import flash_attn_varlen_func
 except ImportError:
+    flash_attn = None
     flash_attn_varlen_func = None
+    _flash_attn_forward = None
 
 
 MEMORY_LAYOUT = {
@@ -150,3 +154,59 @@ def attention(
     b, s, a, d = x.shape
     out = x.reshape(b, s, -1)
     return out
+
+
+def parallel_attention(
+    hybrid_seq_parallel_attn,
+    q,
+    k,
+    v,
+    img_q_len,
+    img_kv_len,
+    cu_seqlens_q,
+    cu_seqlens_kv
+):
+    attn1 = hybrid_seq_parallel_attn(
+        None,
+        q[:, :img_q_len, :, :],
+        k[:, :img_kv_len, :, :],
+        v[:, :img_kv_len, :, :],
+        dropout_p=0.0,
+        causal=False,
+        joint_tensor_query=q[:,img_q_len:cu_seqlens_q[1]],
+        joint_tensor_key=k[:,img_kv_len:cu_seqlens_kv[1]],
+        joint_tensor_value=v[:,img_kv_len:cu_seqlens_kv[1]],
+        joint_strategy="rear",
+    )
+    if flash_attn.__version__ >= '2.7.0':
+        attn2, *_ = _flash_attn_forward(
+            q[:,cu_seqlens_q[1]:],
+            k[:,cu_seqlens_kv[1]:],
+            v[:,cu_seqlens_kv[1]:],
+            dropout_p=0.0,
+            softmax_scale=q.shape[-1] ** (-0.5),
+            causal=False,
+            window_size_left=-1,
+            window_size_right=-1,
+            softcap=0.0,
+            alibi_slopes=None,
+            return_softmax=False,
+        )
+    else:
+        attn2, *_ = _flash_attn_forward(
+            q[:,cu_seqlens_q[1]:],
+            k[:,cu_seqlens_kv[1]:],
+            v[:,cu_seqlens_kv[1]:],
+            dropout_p=0.0,
+            softmax_scale=q.shape[-1] ** (-0.5),
+            causal=False,
+            window_size=(-1, -1),
+            softcap=0.0,
+            alibi_slopes=None,
+            return_softmax=False,
+        )
+    attn = torch.cat([attn1, attn2], dim=1)
+    b, s, a, d = attn.shape
+    attn = attn.reshape(b, s, -1)
+
+    return attn

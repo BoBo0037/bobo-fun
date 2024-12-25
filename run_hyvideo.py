@@ -30,6 +30,7 @@ def main():
     args.infer_steps = 50
     args.disable_autocast=True
     args.seed = int.from_bytes(os.urandom(2), "big")
+    args.use_fp8=False
     # precisions
     args.precision="bf16"
     args.text_encoder_precision="bf16"
@@ -75,13 +76,13 @@ def main():
     samples = outputs['samples']
     
     # Save samples
-    for i, sample in enumerate(samples):
-        sample = samples[i].unsqueeze(0)
-        time_flag = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d-%H:%M:%S")
-        save_path = f"{save_path}/{time_flag}_seed{outputs['seeds'][i]}_{outputs['prompts'][i][:100].replace('/','')}.mp4"
-        save_videos_grid(sample, save_path, fps=args.video_fps)
-        logger.info(f'Sample save to: {save_path}')
-
+    if 'LOCAL_RANK' not in os.environ or int(os.environ['LOCAL_RANK']) == 0:
+        for i, sample in enumerate(samples):
+            sample = samples[i].unsqueeze(0)
+            time_flag = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d-%H:%M:%S")
+            save_path = f"{save_path}/{time_flag}_seed{outputs['seeds'][i]}_{outputs['prompts'][i][:100].replace('/','')}.mp4"
+            save_videos_grid(sample, save_path, fps=args.video_fps)
+            logger.info(f'Sample save to: {save_path}')
 
 def check_model(model_dir : str) -> None: 
     # HunyuanVideo
