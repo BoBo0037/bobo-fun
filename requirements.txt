@@ -2,7 +2,7 @@ tiktoken==0.8.0
 accelerate==1.1.1
 transformers==4.46.3
 numpy==2.0.1
-diffusers==0.32.1
+diffusers==0.31.0
 sentencepiece==0.2.0
 SwissArmyTransformer==0.4.12
 gradio==5.5.0
