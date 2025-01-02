@@ -1,0 +1,28 @@
+-
+    input_img:  assets/imgs/gas_station.png
+    source_prompt: A gas station with a white and red sign that
+      reads "CAFE" There are several cars parked in front of the gas station, including
+      a white car and a van.
+
+    target_prompts:
+    - A gas station with a white and red sign that
+      reads "CVPR" There are several cars parked in front of the gas station, including
+      a white car and a van.
+    
+    target_codes:
+    - cvpr
+
+- 
+
+    input_img:  assets/imgs/lighthouse.png
+    source_prompt: The image features a tall white lighthouse standing prominently
+      on a hill, with a beautiful blue sky in the background. The lighthouse is illuminated
+      by a bright light, making it a prominent landmark in the scene.
+
+    target_prompts:
+    - The image features Big ben clock tower standing prominently
+      on a hill, with a beautiful blue sky in the background. The Big ben clock tower is illuminated
+      by a bright light, making it a prominent landmark in the scene.
+
+    target_codes:
+    - big_ben

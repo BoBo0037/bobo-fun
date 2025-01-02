@@ -48,6 +48,10 @@ python run_omnigen.py
 ```sh
 python run_story_diffusion.py
 ```
+- [FlowEdit](https://github.com/fallenshock/FlowEdit)
+```sh
+python run_flow_edit.py
+```
 - [CogVideo](https://github.com/THUDM/CogVideo)
 ```sh
 python run_cogvideo.py
@@ -102,18 +106,19 @@ python run_mmaudio.py
    hyvideo: spatial_tiled_decode() -> decoded = self.decoder(tile) -> sample = self.conv_in(sample) 这里输入 sample 后得出全 nan 的 值, 导致纯黑问题。
 
 ## Supports:
-- [x] support THUDM/glm-4-9b-chat               (文生文)
-- [x] support microsoft/Phi-3.5-mini-instruct   (文生文)
-- [x] support flux.1                            (文生图)
-- [x] support VectorSpaceLab/OmniGen            (文生图)
-- [X] support HVision-NKU/StoryDiffusion        (文生图, 擅长故事)
-- [x] support THUDM/CogVideo                    (文生视频)
-- [x] support aigc-apps/CogVideoX-Fun           (文生视频)
-- [X] support Lightricks/LTX-Video              (文生视频)
-- [X] support genmoai/mochi                     (文生视频)
-- [X] support Tencent/HunyuanVideo              (文生视频)
-- [X] support Tencent/MimicMotion               (动作/跳舞)
-- [X] support xinntao/Real-ESRGAN               (视频超分)
-- [X] support hzwer/ECCV2022-RIFE               (视频插帧)
-- [X] support suno-ai/bark                      (文生音频, 擅长语音/对话)
-- [X] support hkchengrex/MMAudio                (文生音频, 擅长音效/音乐)
+- [x] 1. THUDM/glm-4-9b-chat               (文生文)
+- [x] 2. microsoft/Phi-3.5-mini-instruct   (文生文)
+- [x] 3. flux.1                            (文生图)
+- [x] 4. VectorSpaceLab/OmniGen            (文生图)
+- [X] 5. HVision-NKU/StoryDiffusion        (文生图, 擅长故事)
+- [X] 6. fallenshock/FlowEdit              (修图)
+- [x] 7. THUDM/CogVideo                    (文生视频)
+- [x] 8. aigc-apps/CogVideoX-Fun           (文生视频)
+- [X] 9. Lightricks/LTX-Video              (文生视频)
+- [X] 10. genmoai/mochi                    (文生视频)
+- [X] 11. Tencent/HunyuanVideo             (文生视频)
+- [X] 12. Tencent/MimicMotion              (动作/跳舞)
+- [X] 13. xinntao/Real-ESRGAN              (视频超分)
+- [X] 14. hzwer/ECCV2022-RIFE              (视频插帧)
+- [X] 15. suno-ai/bark                     (文生音频, 擅长语音/对话)
+- [X] 16. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)

@@ -6,6 +6,8 @@ import stat
 import subprocess
 import torch
 import platform
+import requests
+from tqdm import tqdm
 from PIL import Image
 
 def set_device():
@@ -26,6 +28,20 @@ def set_device():
         print("Set device to 'cpu'")
         device = torch.device('cpu')
     return device
+
+def download(url, file_path):
+    if not os.path.exists(file_path):
+        download_file(url, file_path)
+
+def load(dataset_path):
+    print("Start opening dataset file")
+    data = None
+    with open(dataset_path, 'r', encoding='utf-8') as f:
+        data = f.read()
+    if data is None:
+        print("The output data is None")
+        raise
+    return data
 
 def check_numpy_version():
     np_version = [int(i) for i in np.__version__.split('.')]
@@ -86,3 +102,16 @@ def find_single_file_with_suffix(folder_path : str, suffix : str) -> str:
         if file.endswith(suffix):
             return os.path.join(folder_path, file)
     return None
+
+def update_progress(file, chunk, pbar):
+    if chunk:
+        file.write(chunk)
+        pbar.update(len(chunk))
+
+def download_file(url, file_path, chunk_size=1024):
+    response = requests.get(url, stream=True)
+    total_size = int(response.headers.get('content-length', 0))
+    with open(file_path, 'wb') as f:
+        with tqdm(total=total_size, unit='B', unit_scale=True, desc=file_path) as pbar:
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                update_progress(f, chunk, pbar)
