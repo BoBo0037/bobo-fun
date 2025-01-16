@@ -10,7 +10,7 @@ device = set_device()
 hyvideo = HunyuanVideoManager(device, torch.bfloat16)
 
 # settings
-hyvideo.set_prompt(PromptManager("prompts.json").get("suv"))
+hyvideo.set_prompt(PromptManager("prompts.json").get("F-150"))
 hyvideo.set_output_layout(
     width=720, 
     height=384,
