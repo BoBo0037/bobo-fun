@@ -7,6 +7,11 @@ All code has been tested on a MacBook Pro **(M4 Max / 128GB RAM)**.
 ![Platform](https://img.shields.io/badge/platform-macOS-blue?style=flat-square)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/license/apache-2-0)
 
+## News:
+- Support [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
+
+  Using the HunyuanVideoPipeline from the newly released diffusers 0.32.2, everything runs well on a Mac...
+
 ## Environment
 To set up our environment, please run:
 ```sh
@@ -68,7 +73,7 @@ python run_ltxvideo.py
 ```sh
 python run_mochi.py
 ```
-- [HunyuanVideo](https://github.com/Tencent/HunyuanVideo) ---------> **PS. black video bug**
+- [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
 ```sh
 python run_hyvideo.py
 ```
@@ -99,11 +104,9 @@ python run_mmaudio.py
 ## Issues:
 1. 目前几乎所有文生视频项目, 当分辨率或生成帧数较大时, 都有 total bytes of NDArray > 2**32 或 Invalid buffer size 报错问题。这似乎是 mac 本身内部实现问题, 暂无太好方法。
 
-2. Mochi 和 hyvideo(效果应该是当下开源中最好) 目前均有纯黑视频 bug, 暂时没找到好方法解决。
+2. Mochi 目前有纯黑视频 bug。
 
    Mochi: sample_model() ---> model_fn() ---> out_cond 和 out_uncond 模型采样值为 tensor([[nan, nan, ..., nan, nan]...]), 导致纯黑问题。
-
-   hyvideo: spatial_tiled_decode() -> decoded = self.decoder(tile) -> sample = self.conv_in(sample) 这里输入 sample 后得出全 nan 的 值, 导致纯黑问题。
 
 ## Supports:
 - [x] 1. THUDM/glm-4-9b-chat               (文生文)
