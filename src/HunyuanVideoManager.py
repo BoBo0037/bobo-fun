@@ -1,24 +1,24 @@
 import os
 import gc
 import torch
+from typing import Optional
 from diffusers import HunyuanVideoPipeline, HunyuanVideoTransformer3DModel
 from diffusers.utils import export_to_video
-#from utils.helper import check_and_make_folder
+from utils.helper import check_and_make_folder
 
 class HunyuanVideoManager():
     def __init__(self, device : torch.device, dtype : torch.dtype):
         self.device : torch.device = device
         self.dtype: torch.dtype = dtype
         self.model_id = "hunyuanvideo-community/HunyuanVideo"
-        self.prompt = "The camera follows behind a white vintage SUV with a black roof rack as it speeds up a steep dirt road surrounded by pine trees on a steep mountain slope, dust kicks up from it's tires, the sunlight shines on the SUV as it speeds along the dirt road, casting a warm glow over the scene. The dirt road curves gently into the distance, with no other cars or vehicles in sight. The trees on either side of the road are redwoods, with patches of greenery scattered throughout. The car is seen from the rear following the curve with ease, making it seem as if it is on a rugged drive through the rugged terrain. The dirt road itself is surrounded by steep hills and mountains, with a clear blue sky above with wispy clouds."
-        #self.negative_prompt = "The video is not of a high quality, it has a low resolution. Watermark present in each frame. The background is solid. Strange body and strange trajectory. Distortion."
+        self.prompt = "A cat walks on the grass, realistic"
         self.output_path = "output_hyvideo"
         self.width = 512
         self.height = 320
         self.num_frames = 9
         self.fps = 8
         self.num_inference_steps = 15
-        self.guidance_scale = 6.5
+        self.guidance_scale = 6.0
         self.seed = None
 
     def cleanup(self):
@@ -27,6 +27,14 @@ class HunyuanVideoManager():
         torch.mps.empty_cache()
     
     def setup(self):
+        # set seed
+        if self.seed is None:
+            self.seed = int.from_bytes(os.urandom(2), "big")
+        print(f"set seed to '{self.seed}'")
+        
+        # check output folder
+        check_and_make_folder(self.output_path)
+
         print("start setup 8-bit transformer")
         transformer = HunyuanVideoTransformer3DModel.from_pretrained(
             self.model_id, 
@@ -52,6 +60,30 @@ class HunyuanVideoManager():
             num_inference_steps=self.num_inference_steps,
             guidance_scale=self.guidance_scale
         ).frames[0]
-
         print("start save video")
-        export_to_video(output, "output.mp4", fps=self.fps)
+        index = len([path for path in os.listdir(self.output_path)]) + 1
+        prefix = str(index).zfill(8)
+        video_name = os.path.join(self.output_path, prefix + ".mp4")
+        export_to_video(output, video_name, fps=self.fps)
+
+    def set_prompt(self, prompt : str) -> None:
+            self.prompt = prompt
+            print(f"Set prompt to '{self.prompt}'")
+
+    def set_output_layout(self, 
+                          output_path : Optional[str] = "output_hyvideo", 
+                          width : Optional[int] = 512, 
+                          height : Optional[int] = 320, 
+                          fps : Optional[int] = 8, 
+                          num_frames : Optional[int] = 25,
+                          num_inference_steps : Optional[int] = 35) -> None:
+        self.output_path = output_path
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.num_frames = num_frames
+        self.num_inference_steps = num_inference_steps
+        print(f"Set output path to '{self.output_path}'")
+        print(f"Set video [width, height] to [{self.width}, {self.height}]")
+        print(f"Set video fps and num of frames to '{self.fps}' and '{self.num_frames}'")
+        print(f"Set num of inference steps to '{self.num_inference_steps}'")
