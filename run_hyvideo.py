@@ -11,12 +11,15 @@ hyvideo = HunyuanVideoManager(device, torch.bfloat16)
 
 # settings
 hyvideo.set_prompt(PromptManager("prompts.json").get("F-150"))
+
+# 640 * 400: 46frames, ~3s
+# 480 * 352: 61frames, ~4s
 hyvideo.set_output_layout(
-    width=720, 
-    height=384,
-    num_frames=65,
-    num_inference_steps=35,
-    fps=16
+    width=480, 
+    height=352,
+    num_frames=61,
+    num_inference_steps=30,
+    fps=15
 )
 
 # setup

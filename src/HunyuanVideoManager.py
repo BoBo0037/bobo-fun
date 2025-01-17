@@ -15,9 +15,9 @@ class HunyuanVideoManager():
         self.output_path = "output_hyvideo"
         self.width = 512
         self.height = 320
-        self.num_frames = 9
-        self.fps = 8
-        self.num_inference_steps = 15
+        self.num_frames = 31
+        self.fps = 15
+        self.num_inference_steps = 30
         self.guidance_scale = 6.0
         self.seed = None
 
@@ -41,6 +41,7 @@ class HunyuanVideoManager():
             subfolder="transformer", 
             torch_dtype=self.dtype
         )
+
         print("start setup hyvideo pipeline")
         self.pipe = HunyuanVideoPipeline.from_pretrained(
             self.model_id, 
@@ -60,6 +61,7 @@ class HunyuanVideoManager():
             num_inference_steps=self.num_inference_steps,
             guidance_scale=self.guidance_scale
         ).frames[0]
+
         print("start save video")
         index = len([path for path in os.listdir(self.output_path)]) + 1
         prefix = str(index).zfill(8)
