@@ -92,6 +92,10 @@ python run_realesrgan.py
 ```sh
 python run_rife.py
 ```
+- [thewh1teagle/kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx)
+```sh
+python run_kokoro_82m.py
+```
 - [suno-ai/bark](https://github.com/suno-ai/bark)
 ```sh
 python run_suno_bark.py
@@ -123,5 +127,6 @@ python run_mmaudio.py
 - [X] 12. Tencent/MimicMotion              (动作/跳舞)
 - [X] 13. xinntao/Real-ESRGAN              (视频超分)
 - [X] 14. hzwer/ECCV2022-RIFE              (视频插帧)
-- [X] 15. suno-ai/bark                     (文生音频, 擅长语音/对话)
-- [X] 16. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
+- [X] 15. thewh1teagle/kokoro-onnx         (文生音频)
+- [X] 16. suno-ai/bark                     (文生音频)
+- [X] 17. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
