@@ -59,7 +59,7 @@ python run_flow_edit.py
 ```
 - [RMBG](https://huggingface.co/briaai/RMBG-2.0)
 ```sh
-python run_rmbg.py
+PYTORCH_ENABLE_MPS_FALLBACK=1 python run_rmbg.py
 ```
 - [CogVideo](https://github.com/THUDM/CogVideo)
 ```sh
