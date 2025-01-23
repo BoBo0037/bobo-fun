@@ -57,6 +57,10 @@ python run_story_diffusion.py
 ```sh
 python run_flow_edit.py
 ```
+- [RMBG](https://huggingface.co/briaai/RMBG-2.0)
+```sh
+python run_rmbg.py
+```
 - [CogVideo](https://github.com/THUDM/CogVideo)
 ```sh
 python run_cogvideo.py
@@ -119,14 +123,15 @@ python run_mmaudio.py
 - [x] 4. VectorSpaceLab/OmniGen            (文生图)
 - [X] 5. HVision-NKU/StoryDiffusion        (文生图, 擅长故事)
 - [X] 6. fallenshock/FlowEdit              (修图)
-- [x] 7. THUDM/CogVideo                    (文生视频)
-- [x] 8. aigc-apps/CogVideoX-Fun           (文生视频)
-- [X] 9. Lightricks/LTX-Video              (文生视频)
-- [X] 10. genmoai/mochi                    (文生视频)
-- [X] 11. Tencent/HunyuanVideo             (文生视频)
-- [X] 12. Tencent/MimicMotion              (动作/跳舞)
-- [X] 13. xinntao/Real-ESRGAN              (视频超分)
-- [X] 14. hzwer/ECCV2022-RIFE              (视频插帧)
-- [X] 15. thewh1teagle/kokoro-onnx         (文生音频)
-- [X] 16. suno-ai/bark                     (文生音频)
-- [X] 17. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
+- [X] 7. briaai/RMBG-2.0                   (图片背景剔除)
+- [x] 8. THUDM/CogVideo                    (文生视频)
+- [x] 9. aigc-apps/CogVideoX-Fun           (文生视频)
+- [X] 10. Lightricks/LTX-Video              (文生视频)
+- [X] 11. genmoai/mochi                    (文生视频)
+- [X] 12. Tencent/HunyuanVideo             (文生视频)
+- [X] 13. Tencent/MimicMotion              (动作/跳舞)
+- [X] 14. xinntao/Real-ESRGAN              (视频超分)
+- [X] 15. hzwer/ECCV2022-RIFE              (视频插帧)
+- [X] 16. thewh1teagle/kokoro-onnx         (文生音频)
+- [X] 17. suno-ai/bark                     (文生音频)
+- [X] 18. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
