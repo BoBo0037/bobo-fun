@@ -8,9 +8,9 @@ All code has been tested on a MacBook Pro **(M4 Max / 128GB RAM)**.
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/license/apache-2-0)
 
 ## News:
-- Support [HunyuanVideo](https://github.com/Tencent/HunyuanVideo) with low memory using
+- Support [DeepSeek-R1-Distill](https://huggingface.co/deepseek-ai)
 
-  Using the HunyuanVideoPipeline from the newly released diffusers 0.32.2, everything runs well on a Mac...
+- Support [HunyuanVideo](https://github.com/Tencent/HunyuanVideo) with low memory using
 
 ## Environment
 To set up our environment, please run:
@@ -44,6 +44,10 @@ python run_glm.py
 - [Phi-3.5-mini-instruct](https://huggingface.co/microsoft/Phi-3.5-mini-instruct)
 ```sh
 python run_phi.py
+```
+- [DeepSeek-R1-Distill](https://huggingface.co/deepseek-ai)
+```sh
+python run_deepseek_r1.py
 ```
 - [OmniGen](https://github.com/VectorSpaceLab/OmniGen)
 ```sh
@@ -119,19 +123,25 @@ python run_mmaudio.py
 ## Supports:
 - [x] 1. THUDM/glm-4-9b-chat               (文生文)
 - [x] 2. microsoft/Phi-3.5-mini-instruct   (文生文)
-- [x] 3. flux.1                            (文生图)
-- [x] 4. VectorSpaceLab/OmniGen            (文生图)
-- [X] 5. HVision-NKU/StoryDiffusion        (文生图, 擅长故事)
-- [X] 6. fallenshock/FlowEdit              (修图)
-- [X] 7. briaai/RMBG-2.0                   (图片背景剔除)
-- [x] 8. THUDM/CogVideo                    (文生视频)
-- [x] 9. aigc-apps/CogVideoX-Fun           (文生视频)
-- [X] 10. Lightricks/LTX-Video              (文生视频)
-- [X] 11. genmoai/mochi                    (文生视频)
-- [X] 12. Tencent/HunyuanVideo             (文生视频)
-- [X] 13. Tencent/MimicMotion              (动作/跳舞)
-- [X] 14. xinntao/Real-ESRGAN              (视频超分)
-- [X] 15. hzwer/ECCV2022-RIFE              (视频插帧)
-- [X] 16. thewh1teagle/kokoro-onnx         (文生音频)
-- [X] 17. suno-ai/bark                     (文生音频)
-- [X] 18. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
+- [x] 3. deepseek-ai/DeepSeek-R1-Distill   (文生文)
+
+- [x] 4. flux.1                            (文生图)
+- [x] 5. VectorSpaceLab/OmniGen            (文生图)
+- [X] 6. HVision-NKU/StoryDiffusion        (文生图, 擅长故事)
+- [X] 7. fallenshock/FlowEdit              (修图)
+- [X] 8. briaai/RMBG-2.0                   (图片背景剔除)
+
+- [x] 9. THUDM/CogVideo                    (文生视频)
+- [x] 10. aigc-apps/CogVideoX-Fun           (文生视频)
+- [X] 11. Lightricks/LTX-Video             (文生视频)
+- [X] 12. genmoai/mochi                    (文生视频)
+- [X] 13. Tencent/HunyuanVideo             (文生视频)
+
+- [X] 14. Tencent/MimicMotion              (动作/跳舞)
+
+- [X] 15. xinntao/Real-ESRGAN              (视频超分)
+- [X] 16. hzwer/ECCV2022-RIFE              (视频插帧)
+
+- [X] 17. thewh1teagle/kokoro-onnx         (文生音频)
+- [X] 18. suno-ai/bark                     (文生音频)
+- [X] 19. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
