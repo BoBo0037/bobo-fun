@@ -12,9 +12,10 @@ hyvideo = HunyuanVideoManager(device, torch.bfloat16)
 # settings
 hyvideo.set_prompt(PromptManager("prompts.json").get("F-150"))
 
-# 1280 * 720 > 20frames, 15fps, ~ 1.3s
-# 640 * 400  > 46frames, 15fps, ~ 3s
-# 480 * 352  > 61frames, 15fps, ~ 4s
+# 1280 * 720: 20frames, 15fps, ~ 1.3s (Weird video BUG)
+# 960 * 544 : 31frames, 15fps, ~ 2s (Weird video BUG)
+# 640 * 400 : 46frames, 15fps, ~ 3s (ok)
+# 480 * 352 : 61frames, 15fps, ~ 4s (ok)
 hyvideo.set_output_layout(
     width=480, 
     height=352,
