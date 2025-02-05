@@ -8,7 +8,7 @@ All code has been tested on a MacBook Pro **(M4 Max / 128GB RAM)**.
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/license/apache-2-0)
 
 ## News:
-- Support [HunyuanVideo](https://github.com/Tencent/HunyuanVideo)
+- Support [HunyuanVideo](https://github.com/Tencent/HunyuanVideo) with low memory using
 
   Using the HunyuanVideoPipeline from the newly released diffusers 0.32.2, everything runs well on a Mac...
 

@@ -23,10 +23,12 @@ hyvideo.set_output_layout(
 )
 
 # setup
-hyvideo.setup()
+hyvideo.setup_low_mem()
+#hyvideo.setup()
 
 # generate video
-hyvideo.generate()
+hyvideo.generate_low_mem()
+#hyvideo.generate()
 
 # release
 hyvideo.cleanup()
