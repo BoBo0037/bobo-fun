@@ -157,6 +157,10 @@ class HunyuanVideoManager():
             torch_dtype=torch.bfloat16
         ).to(self.device)
 
+        # memory savings
+        vae.enable_tiling()
+        vae.enable_slicing()
+
         print("start decode latents")
         with torch.no_grad():
             # decode latents
