@@ -1,3 +1,4 @@
+import os
 import gc
 import torch
 from transformers import PreTrainedTokenizerFast, LlamaForCausalLM
@@ -15,8 +16,8 @@ class HiDreamManager:
         # "HiDream-ai/HiDream-I1-Dev"
         # "HiDream-ai/HiDream-I1-Full"
         self.model_id = "HiDream-ai/HiDream-I1-Dev"
-        #self.model_id_llama3 = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-        self.model_id_llama3 = "/Users/zhangbo/.cache/modelscope/hub/LLM-Research/Meta-Llama-3___1-8B-Instruct"
+        self.model_id_llama3 = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+        #self.model_id_llama3 = os.path.expanduser("~/.cache/modelscope/hub/LLM-Research/Meta-Llama-3___1-8B-Instruct")
         self.prompt = 'A cat holding a sign that says "Hi-Dreams.ai", a realistic photo'
         self.output_path = "output_hidream"
         self.width = 512
