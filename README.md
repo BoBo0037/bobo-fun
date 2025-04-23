@@ -88,7 +88,7 @@ python run_hyvideo.py
 ```
 - [Wan-Video](https://github.com/Wan-Video/Wan2.1)
 ```sh
-python PYTORCH_ENABLE_MPS_FALLBACK=1 run_wan_video.py
+PYTORCH_ENABLE_MPS_FALLBACK=1 python run_wan_video.py
 ```
 - [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion)
 ```sh
