@@ -9,6 +9,7 @@ All code has been tested on a MacBook Pro **(M4 Max / 128GB RAM)**.
 
 ## News:
 - Support [Wan-Video/Wan2.1](https://github.com/Wan-Video/Wan2.1)
+- Support [HiDream-ai/HiDream-I1](https://github.com/HiDream-ai/HiDream-I1)
 
 ## Todo:
 - Support [HunyuanVideo-I2V](https://github.com/Tencent/HunyuanVideo-I2V)
@@ -37,6 +38,11 @@ Just run you want as belows
 - [mflux](https://github.com/filipstrand/mflux)
 ```sh
 python run_flux.py
+```
+- [HiDream](https://github.com/HiDream-ai/HiDream-I1)
+```sh
+pip install git+https://github.com/huggingface/diffusers.git
+python run_hidream.py
 ```
 - [glm-4-9b-chat](https://huggingface.co/THUDM/glm-4-9b-chat)
 ```sh
@@ -131,23 +137,24 @@ python run_mmaudio.py
 - [x] 3. deepseek-ai/DeepSeek-R1-Distill   (文生文)
 
 - [x] 4. flux.1                            (文生图)
-- [x] 5. VectorSpaceLab/OmniGen            (文生图)
-- [X] 6. HVision-NKU/StoryDiffusion        (文生图, 擅长故事)
-- [X] 7. fallenshock/FlowEdit              (修图)
-- [X] 8. briaai/RMBG-2.0                   (图片背景剔除)
+- [x] 5. HiDream                           (文生图)
+- [x] 6. VectorSpaceLab/OmniGen            (文生图)
+- [X] 7. HVision-NKU/StoryDiffusion        (文生图, 擅长故事)
+- [X] 8. fallenshock/FlowEdit              (修图)
+- [X] 9. briaai/RMBG-2.0                   (图片背景剔除)
 
-- [x] 9. THUDM/CogVideo                    (文生视频)
-- [x] 10. aigc-apps/CogVideoX-Fun           (文生视频)
-- [X] 11. Lightricks/LTX-Video             (文生视频)
-- [X] 12. genmoai/mochi                    (文生视频)
-- [X] 13. Tencent/HunyuanVideo             (文生视频)
-- [X] 14. Wan-Video/Wan2.1                 (文生视频)
+- [x] 10. THUDM/CogVideo                   (文生视频)
+- [x] 11. aigc-apps/CogVideoX-Fun          (文生视频)
+- [X] 12. Lightricks/LTX-Video             (文生视频)
+- [X] 13. genmoai/mochi                    (文生视频)
+- [X] 14. Tencent/HunyuanVideo             (文生视频)
+- [X] 15. Wan-Video/Wan2.1                 (文生视频)
 
-- [X] 15. Tencent/MimicMotion              (动作/跳舞)
+- [X] 16. Tencent/MimicMotion              (动作/跳舞)
 
-- [X] 16. xinntao/Real-ESRGAN              (视频超分)
-- [X] 17. hzwer/ECCV2022-RIFE              (视频插帧)
+- [X] 17. xinntao/Real-ESRGAN              (视频超分)
+- [X] 18. hzwer/ECCV2022-RIFE              (视频插帧)
 
-- [X] 18. thewh1teagle/kokoro-onnx         (文生音频)
-- [X] 19. suno-ai/bark                     (文生音频)
-- [X] 20. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
+- [X] 19. thewh1teagle/kokoro-onnx         (文生音频)
+- [X] 20. suno-ai/bark                     (文生音频)
+- [X] 21. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
