@@ -56,7 +56,7 @@ class WanVideoManager():
         print("setup scheduler")
         self.scheduler = UniPCMultistepScheduler(prediction_type='flow_prediction', use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=self.flow_shift)
         
-        if enable_i2v:            
+        if enable_i2v:
             print("setup text encoder")
             self.text_encoder = UMT5EncoderModel.from_pretrained(self.model_id_i2v, subfolder="text_encoder", torch_dtype=self.dtype)
             
