@@ -8,9 +8,10 @@ All code has been tested on a MacBook Pro **(M4 Max / 128GB RAM)**.
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/license/apache-2-0)
 
 ## News:
-- Support [DeepSeek-R1-Distill](https://huggingface.co/deepseek-ai)
+- Support [Wan-Video](https://github.com/Wan-Video/Wan2.1)
 
-- Support [HunyuanVideo](https://github.com/Tencent/HunyuanVideo) with low memory using
+## Todo:
+- Support [HunyuanVideo-I2V](https://github.com/Tencent/HunyuanVideo-I2V)
 
 ## Environment
 To set up our environment, please run:
@@ -85,6 +86,11 @@ python run_mochi.py
 ```sh
 python run_hyvideo.py
 ```
+- [Wan-Video](https://github.com/Wan-Video/Wan2.1)
+```sh
+pip install git+https://github.com/huggingface/diffusers
+python PYTORCH_ENABLE_MPS_FALLBACK=1 run_wan_video.py
+```
 - [Tencent/MimicMotion](https://github.com/Tencent/MimicMotion)
 ```sh
 conda remove pytorch torchvision torchaudio
@@ -136,12 +142,13 @@ python run_mmaudio.py
 - [X] 11. Lightricks/LTX-Video             (文生视频)
 - [X] 12. genmoai/mochi                    (文生视频)
 - [X] 13. Tencent/HunyuanVideo             (文生视频)
+- [X] 14. Wan-Video/Wan2.1                 (文生视频)
 
-- [X] 14. Tencent/MimicMotion              (动作/跳舞)
+- [X] 15. Tencent/MimicMotion              (动作/跳舞)
 
-- [X] 15. xinntao/Real-ESRGAN              (视频超分)
-- [X] 16. hzwer/ECCV2022-RIFE              (视频插帧)
+- [X] 16. xinntao/Real-ESRGAN              (视频超分)
+- [X] 17. hzwer/ECCV2022-RIFE              (视频插帧)
 
-- [X] 17. thewh1teagle/kokoro-onnx         (文生音频)
-- [X] 18. suno-ai/bark                     (文生音频)
-- [X] 19. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
+- [X] 18. thewh1teagle/kokoro-onnx         (文生音频)
+- [X] 19. suno-ai/bark                     (文生音频)
+- [X] 20. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)

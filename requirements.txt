@@ -1,13 +1,13 @@
 tiktoken==0.8.0
-accelerate==1.1.1
+accelerate==1.6.0
 transformers==4.46.3
 numpy==2.0.1
-diffusers==0.32.2
+diffusers==0.33.1
 sentencepiece==0.2.0
 SwissArmyTransformer==0.4.12
 gradio==5.5.0
-imageio==2.35.1
-imageio-ffmpeg==0.5.1
+imageio==2.37.0
+imageio-ffmpeg==0.6.0
 openai==1.54.0
 moviepy==1.0.3
 scikit-video==1.1.11
