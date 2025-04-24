@@ -50,9 +50,6 @@ class WanVideoManager():
         # check output folder
         check_and_make_folder(self.output_path)
 
-        print("setup vae")
-        self.vae = AutoencoderKLWan.from_pretrained(self.model_id_t2v, subfolder="vae", torch_dtype=torch.float32)
-
         print("setup scheduler")
         self.scheduler = UniPCMultistepScheduler(prediction_type='flow_prediction', use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=self.flow_shift)
         
@@ -63,6 +60,9 @@ class WanVideoManager():
             print("setup image encoder")
             self.image_encoder = CLIPVisionModel.from_pretrained(self.model_id_i2v, subfolder="image_encoder", torch_dtype=torch.float32)
             
+            print("setup vae")
+            self.vae = AutoencoderKLWan.from_pretrained(self.model_id_i2v, subfolder="vae", torch_dtype=torch.float32)
+
             print("setup transformer")
             self.transformer = WanTransformer3DModel.from_pretrained(self.model_id_i2v, subfolder="transformer", torch_dtype=self.dtype)
             self.transformer.enable_layerwise_casting(storage_dtype=torch.bfloat16, compute_dtype=self.dtype)
@@ -76,6 +76,8 @@ class WanVideoManager():
                 transformer=self.transformer, 
                 torch_dtype=self.dtype)
         else:
+            print("setup vae")
+            self.vae = AutoencoderKLWan.from_pretrained(self.model_id_t2v, subfolder="vae", torch_dtype=torch.float32)
             print("setup Wan video pipeline")
             self.pipe = WanPipeline.from_pretrained(self.model_id_t2v, vae=self.vae, torch_dtype=self.dtype)
         
