@@ -1,6 +1,5 @@
-# pip install git+https://github.com/huggingface/transformers@v4.51.3-Qwen2.5-Omni-preview
-# huggingface-cli login
-# python run_qwen_omni.py
+import os
+os.environ["HF_ENDPOINT"]="https://hf-mirror.com"
 import torch
 import soundfile as sf
 from transformers import (
