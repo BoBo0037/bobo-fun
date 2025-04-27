@@ -8,8 +8,9 @@ All code has been tested on a MacBook Pro **(M4 Max / 128GB RAM)**.
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/license/apache-2-0)
 
 ## News:
-- Support [Wan-Video/Wan2.1](https://github.com/Wan-Video/Wan2.1)
+- Support [QwenLM/Qwen2.5-Omni](https://github.com/QwenLM/Qwen2.5-Omni)
 - Support [HiDream-ai/HiDream-I1](https://github.com/HiDream-ai/HiDream-I1)
+- Support [Wan-Video/Wan2.1](https://github.com/Wan-Video/Wan2.1)
 
 ## Todo:
 - Support [HunyuanVideo-I2V](https://github.com/Tencent/HunyuanVideo-I2V)
@@ -123,6 +124,12 @@ python run_suno_bark.py
 ```sh
 python run_mmaudio.py
 ```
+- [QwenLM/Qwen2.5-Omni](https://github.com/QwenLM/Qwen2.5-Omni)
+```sh
+pip install git+https://github.com/huggingface/transformers@v4.51.3-Qwen2.5-Omni-preview
+huggingface-cli login (for downloading model)
+python run_mmaudio.py
+```
 
 ## Issues:
 1. 目前几乎所有文生视频项目, 当分辨率或生成帧数较大时, 都有 total bytes of NDArray > 2**32 或 Invalid buffer size 报错问题。这似乎是 mac 本身内部实现问题, 暂无太好方法。
@@ -130,6 +137,8 @@ python run_mmaudio.py
 2. Mochi 目前有纯黑视频 bug。
 
    Mochi: sample_model() ---> model_fn() ---> out_cond 和 out_uncond 模型采样值为 tensor([[nan, nan, ..., nan, nan]...]), 导致纯黑问题。
+
+3. HiDream 生成的图片呈现奇怪的“五彩斑斓”, 有待研究原因
 
 ## Supports:
 - [x] 1. THUDM/glm-4-9b-chat               (文生文)
@@ -158,3 +167,5 @@ python run_mmaudio.py
 - [X] 19. thewh1teagle/kokoro-onnx         (文生音频)
 - [X] 20. suno-ai/bark                     (文生音频)
 - [X] 21. hkchengrex/MMAudio               (文生音频, 擅长音效/音乐)
+
+- [X] 22. QwenLM/Qwen2.5-Omni              (多模态)
