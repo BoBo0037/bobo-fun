@@ -33,7 +33,7 @@ conversation_1 = [
     {
         "role": "user",
         "content": [
-            {"type": "text", "text": "What cant you hear and see in this video?"},
+            {"type": "text", "text": "What cant you hear and see in this video? What is the subtitle content?"},
             {"type": "video", "video": "assets/vids/onepiece_demo.mp4"},
             #{"type": "image", "path": "/path/to/image.jpg"},
             #{"type": "audio", "path": "/path/to/audio.wav"},
