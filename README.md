@@ -128,7 +128,7 @@ python run_mmaudio.py
 ```sh
 pip install git+https://github.com/huggingface/transformers@v4.51.3-Qwen2.5-Omni-preview
 huggingface-cli login (for downloading model)
-python run_mmaudio.py
+python run_qwen_omni.py
 ```
 
 ## Issues:
